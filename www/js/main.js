@@ -15,12 +15,23 @@
   function loadSave() {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
-      if (raw) return Object.assign(P.defaultSave(), JSON.parse(raw));
+      if (raw) {
+        const s = Object.assign(P.defaultSave(), JSON.parse(raw));
+        // migração: antes o Arqueiro vinha liberado; quem já jogou continua com ele
+        if (s.version < 2) {
+          if (s.unlockedLevel > 1 || Object.keys(s.ranks).length) s.ranks.arq_unlock = 1;
+          if (s.ranks.arq_flechas || s.ranks.arq_alcance) s.ranks.bar_forca = Math.max(1, s.ranks.bar_forca || 0);
+          s.version = 2;
+        }
+        return s;
+      }
     } catch (e) { /* armazenamento indisponível */ }
     return P.defaultSave();
   }
   function persist() {
+    save.updatedAt = Date.now();
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignora */ }
+    if (window.TD_CLOUD) window.TD_CLOUD.pushSave(save); // só envia se tiver login
   }
 
   let save = loadSave();
@@ -37,15 +48,65 @@
   window.addEventListener('resize', () => renderer.resize());
 
   // ---------- navegação ----------
-  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result'];
+  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account'];
   function show(name, push) {
     SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
     if (push) screenStack.push(name); else screenStack = [name];
     document.querySelectorAll('.js-florins').forEach((el) => { el.textContent = fmt(save.florins); });
     if (name === 'menu') renderMenu();
     if (name === 'prep') renderPrep();
-    if (name === 'tree') renderTree();
+    if (name === 'tree') { treeSel = null; renderTree(); }
+    if (name === 'account') renderAccount();
   }
+
+  // ---------- CONTA ----------
+  const CLOUD = window.TD_CLOUD;
+  function setAccMsg(text, ok) {
+    const m = $('acc-msg');
+    m.textContent = text || '';
+    m.className = 'acc-msg' + (ok ? ' ok' : '');
+  }
+  function renderAccount() {
+    const st = CLOUD.status();
+    $('acc-name').textContent = st.name;
+    $('acc-status').textContent = st.mode === 'account' ? `👤 ${st.name}` : st.mode === 'guest' ? '👤 Convidado' : st.mode === 'connecting' ? 'Conectando...' : '📱 Só neste aparelho';
+    $('acc-info').textContent =
+      st.mode === 'account' ? 'Seu progresso é salvo na nuvem. Entre com a mesma conta em outro aparelho para continuar de onde parou.'
+        : st.mode === 'guest' ? 'Seu progresso está salvo só neste aparelho. Entre com o Google ou crie um nome de usuário para não perder o avanço e jogar em outros aparelhos.'
+          : st.mode === 'connecting' ? 'Conectando ao servidor...'
+            : 'Contas indisponíveis no momento (sem internet ou servidor não configurado). Seu progresso fica salvo neste aparelho.';
+    const canLogin = st.mode === 'guest';
+    $('acc-google').classList.toggle('hidden', !canLogin);
+    $('acc-form').classList.toggle('hidden', !canLogin);
+    $('acc-logout').classList.toggle('hidden', st.mode !== 'account');
+  }
+  async function accAction(fn, okText) {
+    document.querySelectorAll('#screen-account .btn').forEach((b) => { b.disabled = true; });
+    setAccMsg('Aguarde...', true);
+    try {
+      await fn();
+      if (CLOUD.status().mode === 'account') {
+        const r = await CLOUD.sync(save);
+        if (r.source === 'nuvem') {
+          save = Object.assign(P.defaultSave(), r.save);
+          try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignora */ }
+          selLevel = save.unlockedLevel;
+          okText += ' Progresso recuperado da nuvem.';
+        } else okText += ' Progresso deste aparelho salvo na nuvem.';
+      }
+      setAccMsg(okText, true);
+    } catch (e) {
+      setAccMsg(e.message || String(e));
+    }
+    document.querySelectorAll('#screen-account .btn').forEach((b) => { b.disabled = false; });
+    renderAccount();
+  }
+  $('btn-account').onclick = () => { setAccMsg(''); show('account', true); };
+  $('acc-google').onclick = () => accAction(() => CLOUD.loginGoogle(), 'Conectado com o Google!');
+  $('acc-create').onclick = () => accAction(() => CLOUD.createAccount($('acc-user').value, $('acc-pass').value), 'Conta criada!');
+  $('acc-login').onclick = () => accAction(() => CLOUD.login($('acc-user').value, $('acc-pass').value), 'Bem-vindo de volta!');
+  $('acc-logout').onclick = () => accAction(() => CLOUD.logout(), 'Você saiu. O progresso continua neste aparelho.');
+  CLOUD.onChange(() => { $('acc-name').textContent = CLOUD.status().name; if (!$('screen-account').classList.contains('hidden')) renderAccount(); });
   function back() {
     screenStack.pop();
     const stack = screenStack.length ? screenStack.slice() : ['menu'];
@@ -178,8 +239,16 @@
   $('prep-clear').onclick = () => { loadout = { heroes: {}, powers: {} }; renderPrep(); };
   $('prep-start').onclick = () => startGame(selLevel);
 
-  // ---------- EVOLUÇÃO ----------
-  let treeBranch = CFG.branches[0].id;
+  // ---------- EVOLUÇÃO (teia) ----------
+  // Cada nó tem pos: [coluna, linha]. Arestas = pré-requisitos.
+  // Estados: máximo, comprado, disponível, bloqueado.
+  const NODE_W = 118, NODE_H = 54, GAP_X = 34, GAP_Y = 12, PAD = 24;
+  const branchIcon = {};
+  CFG.branches.forEach((b) => { branchIcon[b.id] = b.icon; });
+  let treeSel = null;
+  let treeZoomAll = false;
+  $('tree-zoom').onclick = () => { treeZoomAll = !treeZoomAll; renderTree(false); };
+
   function fxTotal(node, rank) {
     return node.fx.map((f) => {
       if (f.set !== undefined) return rank ? 'Desbloqueado' : '';
@@ -188,41 +257,123 @@
       return `${v > 0 ? '+' : ''}${Number.isInteger(v) ? v : (v * 100).toFixed(0) + '%'}`;
     }).filter(Boolean).join(', ');
   }
-  function renderTree() {
-    const tabs = $('tree-tabs');
-    tabs.innerHTML = '';
-    CFG.branches.forEach((b) => {
-      const t = document.createElement('button');
-      const canAny = CFG.tree.some((n) => n.branch === b.id && P.canBuy(save, n).ok);
-      t.className = 'tab' + (b.id === treeBranch ? ' active' : '') + (canAny ? ' has-buy' : '');
-      t.innerHTML = `<span class="t-ico">${b.icon}</span>${b.name}`;
-      t.onclick = () => { treeBranch = b.id; renderTree(); };
-      tabs.appendChild(t);
+
+  function nodeState(n) {
+    const rank = P.rankOf(save, n.id);
+    if (rank >= n.max) return 'maxed';
+    if (P.reqMet(save, n)) return rank ? 'owned' : 'available';
+    return 'locked';
+  }
+
+  const nodeXY = (n) => ({
+    x: PAD + n.pos[0] * (NODE_W + GAP_X),
+    y: PAD + n.pos[1] * (NODE_H + GAP_Y),
+  });
+
+  function pickDefaultNode() {
+    // o nó disponível mais barato que dá para comprar; senão a raiz
+    let best = null, bc = Infinity;
+    CFG.tree.forEach((n) => {
+      const st = nodeState(n);
+      if (st !== 'available' && st !== 'owned') return;
+      const c = P.nodeCost(n, P.rankOf(save, n.id));
+      if (c < bc) { bc = c; best = n; }
     });
-    const list = $('tree-nodes');
-    const scroll = list.scrollTop;
-    list.innerHTML = '';
-    CFG.tree.filter((n) => n.branch === treeBranch).forEach((n) => {
+    return best || CFG.tree.find((n) => !n.req || !n.req.length);
+  }
+
+  function renderTree(keepScroll) {
+    const map = $('tree-map');
+    const sx = map.scrollLeft, sy = map.scrollTop;
+    const cols = Math.max(...CFG.tree.map((n) => n.pos[0])) + 1;
+    const rows = Math.max(...CFG.tree.map((n) => n.pos[1])) + 1;
+    const W = PAD * 2 + cols * NODE_W + (cols - 1) * GAP_X;
+    const H = PAD * 2 + rows * NODE_H + (rows - 1) * GAP_Y;
+    if (!treeSel) treeSel = pickDefaultNode();
+
+    // arestas (SVG atrás dos nós)
+    let svg = `<svg class="tree-edges" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+    CFG.tree.forEach((n) => {
+      (n.req || []).forEach(([pid, r]) => {
+        const p = P.nodeById[pid];
+        const a = nodeXY(p), b = nodeXY(n);
+        const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2, x2 = b.x, y2 = b.y + NODE_H / 2;
+        const mx = (x1 + x2) / 2;
+        const met = P.rankOf(save, pid) >= r;
+        svg += `<path class="edge ${met ? 'met' : 'unmet'}" d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}"/>`;
+        if (r > 1) svg += `<text class="edge-lv ${met ? 'met' : ''}" x="${x2 - 6}" y="${y2 - 5}" text-anchor="end">Nv${r}</text>`;
+      });
+    });
+    svg += '</svg>';
+
+    // nós
+    let html = '';
+    CFG.tree.forEach((n) => {
+      const st = nodeState(n);
+      const { x, y } = nodeXY(n);
       const rank = P.rankOf(save, n.id);
-      const met = P.reqMet(save, n);
-      const maxed = rank >= n.max;
-      const div = document.createElement('div');
-      div.className = 'node' + (maxed ? ' maxed' : '') + (met ? '' : ' locked');
-      const pips = n.max > 1 ? `<div class="n-pips">${Array.from({ length: n.max }, (_, i) => `<span class="pip${i < rank ? ' on' : ''}"></span>`).join('')}</div>` : '';
-      const req = met ? '' : `<div class="n-req">🔒 Requer: ${(n.req || []).map(([id, r]) => `${P.nodeById[id].name} ${r}`).join(', ')}</div>`;
-      const total = rank && n.max > 1 ? `<div class="n-total">Atual: ${fxTotal(n, rank)}</div>` : '';
-      div.innerHTML = `<div class="n-head"><span class="n-name">${n.name}</span><span class="n-rank">${rank}/${n.max}</span></div>
-        <div class="n-desc">${n.desc}${n.max > 1 ? ' (por nível)' : ''}</div>${pips}${total}${req}`;
-      if (!maxed && met) {
-        const cost = P.nodeCost(n, rank);
-        div.appendChild(btn(`${rank ? 'Melhorar' : 'Comprar'} · 💰 ${fmt(cost)}`, () => {
-          if (P.buy(save, n.id)) { persist(); renderTree(); }
-        }, save.florins < cost));
-      }
-      list.appendChild(div);
+      const sel = treeSel && treeSel.id === n.id ? ' sel' : '';
+      const afford = (st === 'available' || st === 'owned') && save.florins >= P.nodeCost(n, rank) ? ' afford' : '';
+      const big = n.max === 1 ? ' unlock' : '';
+      const pct = Math.round(rank / n.max * 100);
+      html += `<button class="tnode ${st}${afford}${big}${sel}" data-id="${n.id}" style="left:${x}px;top:${y}px">
+        <span class="t-ico">${st === 'locked' ? '🔒' : branchIcon[n.branch]}</span>
+        <span class="t-name">${n.name}</span>
+        <span class="t-rank">${n.max > 1 ? `${rank}/${n.max}` : (rank ? '✔' : '')}</span>
+        <span class="t-bar"><i style="width:${pct}%"></i></span>
+      </button>`;
     });
-    list.scrollTop = scroll;
+
+    const canvas = $('tree-canvas');
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    // zoom: 1 = normal; "ver tudo" encaixa a teia inteira na área visível
+    const fit = Math.min(1, (map.clientWidth - 4) / W, (map.clientHeight - 4) / H);
+    const z = treeZoomAll ? fit : 1;
+    canvas.style.zoom = z;
+    $('tree-zoom').textContent = treeZoomAll ? '🔍 Aproximar' : '🔍 Ver tudo';
+    canvas.innerHTML = svg + html;
+    canvas.querySelectorAll('.tnode').forEach((b) => {
+      b.onclick = () => { treeSel = P.nodeById[b.dataset.id]; if (treeZoomAll) { treeZoomAll = false; renderTree(false); } else renderTree(true); };
+    });
+    renderTreeDetail();
     document.querySelectorAll('.js-florins').forEach((el) => { el.textContent = fmt(save.florins); });
+
+    if (keepScroll) { map.scrollLeft = sx; map.scrollTop = sy; }
+    else {
+      const { x, y } = nodeXY(treeSel);
+      map.scrollLeft = (x + NODE_W / 2) * z - map.clientWidth / 2;
+      map.scrollTop = (y + NODE_H / 2) * z - map.clientHeight / 2;
+    }
+  }
+
+  function renderTreeDetail() {
+    const d = $('tree-detail');
+    const n = treeSel;
+    const st = nodeState(n);
+    const rank = P.rankOf(save, n.id);
+    const reqs = (n.req || []).map(([id, r]) => {
+      const ok = P.rankOf(save, id) >= r;
+      const pn = P.nodeById[id];
+      const name = pn.name;
+      return `<li class="${ok ? 'ok' : 'no'}">${ok ? '✔' : '✖'} ${name}${pn.max > 1 ? ` nível ${r}` : ''}</li>`;
+    }).join('');
+    const now = rank && n.max > 1 ? fxTotal(n, rank) : '';
+    const next = rank < n.max && n.max > 1 ? fxTotal(n, rank + 1) : '';
+    d.innerHTML = `
+      <div class="d-head"><span class="d-ico">${branchIcon[n.branch]}</span><span class="d-name">${n.name}</span></div>
+      <div class="d-rank">${n.max > 1 ? `Nível ${rank} / ${n.max}` : (rank ? 'Desbloqueado' : 'Desbloqueio')}</div>
+      <p class="d-desc">${n.desc}${n.max > 1 ? ' (por nível)' : ''}</p>
+      ${now || next ? `<div class="d-fx">${now ? `Atual: <b>${now}</b>` : ''}${next ? `<br>Próximo: <b>${next}</b>` : ''}</div>` : ''}
+      ${reqs ? `<div class="d-req-t">Requer</div><ul class="d-req">${reqs}</ul>` : '<div class="d-req-t">Ponto de partida</div>'}
+      <div id="tree-buy"></div>`;
+    if (st === 'maxed') { $('tree-buy').innerHTML = '<div class="d-max">★ Máximo</div>'; return; }
+    const cost = P.nodeCost(n, rank);
+    const b = btn(`${rank ? 'Melhorar' : (n.max === 1 ? 'Desbloquear' : 'Comprar')} · 💰 ${fmt(cost)}`, () => {
+      if (P.buy(save, n.id)) { persist(); renderTree(true); }
+    }, st === 'locked' || save.florins < cost);
+    b.classList.add('primary');
+    $('tree-buy').appendChild(b);
   }
 
   // ---------- PARTIDA ----------
@@ -383,4 +534,20 @@
   show('menu');
   requestAnimationFrame(frame);
   renderer.load();
+
+  // conecta à nuvem (registra o jogador); com login, puxa o progresso mais avançado
+  CLOUD.init().then(async (st) => {
+    $('acc-name').textContent = st.name;
+    if (st.mode !== 'account') return;
+    try {
+      const r = await CLOUD.sync(save);
+      if (r.source === 'nuvem' && !game) {
+        save = Object.assign(P.defaultSave(), r.save);
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignora */ }
+        selLevel = save.unlockedLevel;
+        if (!$('screen-menu').classList.contains('hidden')) renderMenu();
+        document.querySelectorAll('.js-florins').forEach((el) => { el.textContent = fmt(save.florins); });
+      }
+    } catch (e) { console.warn('[nuvem] sincronização falhou:', e.message); }
+  });
 })();

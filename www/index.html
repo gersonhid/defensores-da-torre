@@ -45,7 +45,34 @@
         <button id="btn-play" class="btn primary big">⚔ Jogar</button>
         <button id="btn-tree" class="btn big">Evolução</button>
         <button id="btn-help" class="btn">Como jogar</button>
+        <button id="btn-account" class="btn">👤 <span id="acc-name">Convidado</span></button>
         <button id="btn-reset" class="btn danger small">Apagar progresso</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTA -->
+  <div id="screen-account" class="screen hidden">
+    <div class="panel cols acc-panel">
+      <div class="col">
+        <h2>Conta</h2>
+        <div id="acc-status" class="acc-status"></div>
+        <p id="acc-info" class="acc-info"></p>
+        <button id="acc-google" class="btn google">G&nbsp; Entrar com Google</button>
+        <button id="acc-logout" class="btn danger hidden">Sair da conta</button>
+        <p class="acc-legal">Registramos dados técnicos do aparelho (modelo, sistema, tela, idioma) para suporte
+          e melhoria do jogo. <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a></p>
+        <button class="btn js-back">Voltar</button>
+      </div>
+      <div class="col" id="acc-form">
+        <h3>Ou use um nome de usuário</h3>
+        <input id="acc-user" class="inp" maxlength="16" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="nome_de_usuario">
+        <input id="acc-pass" class="inp" type="password" maxlength="64" autocomplete="current-password" placeholder="senha (mín. 6 caracteres)">
+        <div class="row">
+          <button id="acc-login" class="btn">Entrar</button>
+          <button id="acc-create" class="btn primary">Criar conta</button>
+        </div>
+        <div id="acc-msg" class="acc-msg"></div>
       </div>
     </div>
   </div>
@@ -90,10 +117,15 @@
       <div class="tree-head">
         <button class="btn small js-back">◀ Voltar</button>
         <h2>Evolução</h2>
-        <div class="florins-big">💰 <span class="js-florins">0</span></div>
+        <div class="tree-tools">
+          <button id="tree-zoom" class="btn small">🔍 Ver tudo</button>
+          <div class="florins-big">💰 <span class="js-florins">0</span></div>
+        </div>
       </div>
-      <div id="tree-tabs" class="tabs"></div>
-      <div id="tree-nodes" class="nodes scroll"></div>
+      <div class="tree-body">
+        <div id="tree-map" class="tree-map"><div id="tree-canvas" class="tree-canvas"></div></div>
+        <div id="tree-detail" class="tree-detail"></div>
+      </div>
     </div>
   </div>
 
@@ -129,6 +161,8 @@
   <script src="js/camera.js"></script>
   <script src="js/sprites.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

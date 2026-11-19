@@ -50,6 +50,7 @@ const rows = [];
 for (let L = 1; L <= LEVELS; L++) rows.push({ L, attempts: [], firstWin: 0, towerPct: [], florins: [], time: [], reached: 0, spent: [], dmg: {} });
 
 let stuckCount = 0;
+const unlockAt = {}; // id -> [nível em que foi comprado, por semente]
 for (let seed = 1; seed <= SEEDS; seed++) {
   const rng = P.makeRng(seed * 7919);
   const save = P.defaultSave();
@@ -72,6 +73,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
         const before = save.florins;
         BOT.spendFlorins(P, save);
         totalSpent += before - save.florins;
+        CFG.tree.filter((n) => n.max === 1 && save.ranks[n.id] && !save['_u_' + n.id]).forEach((n) => { save['_u_' + n.id] = 1; (unlockAt[n.id] = unlockAt[n.id] || []).push(L); });
       }
     }
     row.attempts.push(n);
@@ -114,5 +116,11 @@ for (const [a, b] of bands) {
   if (!tot) continue;
   console.log(`  ${pad(a, 2)}-${String(b > 100 ? '+' : b).padEnd(4)} | ` + SOURCES.map((s) => pad(((acc[s] || 0) / tot * 100).toFixed(1), 8)).join(' '));
 }
+
+console.log('\nNível médio em que cada desbloqueio é comprado:');
+CFG.tree.filter((n) => n.max === 1).forEach((n) => {
+  const a = unlockAt[n.id] || [];
+  console.log(`  ${n.name.padEnd(28)} ${a.length ? 'nível ' + avg(a).toFixed(1) + (a.length < SEEDS ? ` (${a.length}/${SEEDS})` : '') : '-'}`);
+});
 
 console.log(`\nCampanhas travadas (não passaram em ${MAX_ATTEMPTS} tentativas): ${stuckCount}/${SEEDS}\n`);

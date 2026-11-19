@@ -78,30 +78,54 @@ p { margin: 0; line-height: 1.35; font-size: 15px; }
 .item .count { font-size: 20px; font-weight: 700; min-width: 22px; text-align: center; }
 .item .btn { padding: 2px 11px; font-size: 20px; }
 
-/* ---------- árvore ---------- */
+/* ---------- árvore (teia) ---------- */
+.tree-panel { max-width: 1100px; }
 .tree-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.tabs { display: flex; gap: 5px; overflow-x: auto; padding: 2px 2px 6px; touch-action: pan-x; flex-shrink: 0; }
-.tab { flex-shrink: 0; font-family: var(--font); background: var(--card); border: 0; padding: 4px 9px; font-size: 13px;
-  color: var(--text); box-shadow: 0 0 0 2px #1a120a; }
-.tab .t-ico { font-size: 16px; margin-right: 3px; }
-.tab.active { background: #7a5c35; box-shadow: 0 0 0 2px var(--gold); }
-.tab.has-buy::after { content: ' ●'; color: var(--gold); }
-.nodes { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 8px;
-  align-content: start; min-height: 0; min-width: 0; overflow-x: hidden; padding: 2px 6px 2px 2px; }
-.tree-panel > * { min-width: 0; }
-.node { background: var(--card); padding: 8px 10px; border-left: 4px solid var(--border-dark); display: flex; flex-direction: column; }
-.node.maxed { border-left-color: var(--gold); }
-.node.locked { background: var(--locked); border-left-color: #555; }
-.node .n-head { display: flex; justify-content: space-between; gap: 8px; }
-.node .n-name { font-weight: 700; }
-.node .n-rank { color: var(--gold); font-size: 13px; white-space: nowrap; }
-.node .n-desc { font-size: 12px; color: var(--muted); margin: 2px 0 4px; flex: 1; }
-.node .n-total { font-size: 12px; color: #9fe2bf; }
-.node .n-req { font-size: 12px; color: #e8a87c; }
-.node .n-pips { display: flex; gap: 2px; margin: 3px 0; flex-wrap: wrap; }
-.node .pip { width: 10px; height: 5px; background: #555; }
-.node .pip.on { background: var(--gold); }
-.node .btn { width: 100%; margin-top: 4px; font-size: 14px; padding: 5px; }
+.tree-body { flex: 1; display: flex; gap: 10px; min-height: 0; }
+.tree-map { flex: 1; overflow: auto; touch-action: pan-x pan-y; min-width: 0; position: relative;
+  background-color: #1b1510;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 16px 16px; box-shadow: inset 0 0 0 2px #0d0906; }
+.tree-canvas { position: relative; }
+.tree-edges { position: absolute; left: 0; top: 0; pointer-events: none; }
+.edge { fill: none; stroke-width: 3; }
+.edge.met { stroke: #c9a15a; }
+.edge.unmet { stroke: #4d4236; stroke-dasharray: 6 5; }
+.edge-lv { font: 700 13px var(--font); fill: #8a7a62; }
+.edge-lv.met { fill: var(--gold); }
+.tnode { position: absolute; width: 118px; height: 54px; padding: 4px 6px 7px 32px; border: 0; text-align: left;
+  font-family: var(--font); color: var(--text); background: var(--card); cursor: pointer;
+  box-shadow: inset -2px -2px 0 rgba(0,0,0,.35), 0 0 0 2px #0d0906; }
+.tnode .t-ico { position: absolute; left: 6px; top: 50%; transform: translateY(-58%); font-size: 18px; }
+.tnode .t-name { display: block; font-size: 12px; font-weight: 700; line-height: 1.1; max-height: 24px; overflow: hidden; }
+.tnode .t-rank { position: absolute; right: 5px; bottom: 4px; font-size: 13px; font-weight: 700; color: var(--gold); }
+.tnode .t-bar { position: absolute; left: 32px; right: 40px; bottom: 8px; height: 4px; background: #1a120a; }
+.tnode .t-bar i { display: block; height: 100%; background: var(--gold); }
+.tnode.unlock { background: #3d3550; }
+.tnode.available { box-shadow: inset -2px -2px 0 rgba(0,0,0,.35), 0 0 0 2px #7bd36b; }
+.tnode.owned { background: #4d3c2a; box-shadow: inset -2px -2px 0 rgba(0,0,0,.35), 0 0 0 2px #c9a15a; }
+.tnode.maxed { background: #5c4a1c; box-shadow: inset -2px -2px 0 rgba(0,0,0,.35), 0 0 0 2px var(--gold); }
+.tnode.locked { background: #2a2420; color: #8a7d68; }
+.tnode.locked .t-bar { display: none; }
+.tnode.afford { animation: pulse 1.2s steps(2) infinite; }
+@keyframes pulse { 50% { box-shadow: inset -2px -2px 0 rgba(0,0,0,.35), 0 0 0 2px #b8ff9a, 0 0 10px #7bd36b; } }
+.tnode.hidden-node { width: 54px; left: 0; margin-left: 32px; padding: 0; text-align: center; font-size: 22px; font-weight: 700;
+  color: #5e5143; background: #201a14; box-shadow: 0 0 0 2px #2e261d; }
+.tnode.sel { outline: 3px solid #fff; outline-offset: 2px; z-index: 2; }
+.tree-detail { width: 230px; flex-shrink: 0; background: var(--panel-2); padding: 10px; overflow-y: auto; touch-action: pan-y;
+  display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 0 2px #0d0906; }
+.tree-detail .d-head { display: flex; align-items: center; gap: 6px; }
+.tree-detail .d-ico { font-size: 24px; }
+.tree-detail .d-name { font-size: 17px; font-weight: 700; color: var(--gold); line-height: 1.1; }
+.tree-detail .d-rank { font-size: 13px; color: var(--muted); }
+.tree-detail .d-desc { font-size: 14px; }
+.tree-detail .d-fx { font-size: 15px; color: #9fe2bf; }
+.tree-detail .d-req-t { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 2px; }
+.tree-detail .d-req { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.tree-detail .d-req .ok { color: #7bd36b; } .tree-detail .d-req .no { color: #e8a87c; }
+.tree-detail .d-max { text-align: center; color: var(--gold); font-weight: 700; font-size: 18px; }
+#tree-buy { margin-top: auto; } #tree-buy .btn { width: 100%; }
+@media (max-height: 430px) { .tree-detail { width: 200px; } .tree-detail .d-desc { font-size: 13px; } }
 
 /* ---------- resultado ---------- */
 .res-body { display: flex; flex-direction: column; gap: 4px; font-size: 15px; }
@@ -141,3 +165,23 @@ p { margin: 0; line-height: 1.35; font-size: 15px; }
   .lvl-num { font-size: 32px; }
   .panel { padding: 10px; }
 }
+
+/* barras de rolagem no tema */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #1a120a; }
+::-webkit-scrollbar-thumb { background: #6b5235; border: 2px solid #1a120a; }
+::-webkit-scrollbar-corner { background: #1a120a; }
+.tree-tools { display: flex; align-items: center; gap: 12px; }
+
+/* ---------- conta ---------- */
+.acc-panel { max-width: 760px; align-items: stretch; }
+.acc-status { font-size: 20px; font-weight: 700; color: var(--gold); }
+.acc-info { font-size: 14px; color: var(--text); }
+.acc-legal { font-size: 11px; color: var(--muted); }
+.acc-legal a { color: var(--gold); }
+.inp { font-family: var(--font); font-size: 16px; padding: 9px 10px; background: #1a120a; color: var(--text); border: 0;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,.5), 0 0 0 2px #6b5235; user-select: text; -webkit-user-select: text; touch-action: auto; }
+.inp:focus { outline: none; box-shadow: inset 2px 2px 0 rgba(0,0,0,.5), 0 0 0 2px var(--gold); }
+.btn.google { background: #f2f2f2; color: #222; font-weight: 700; }
+.acc-msg { font-size: 14px; color: #e8a87c; min-height: 18px; }
+.acc-msg.ok { color: #7bd36b; }

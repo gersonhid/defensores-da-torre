@@ -26,7 +26,7 @@
   }
 
   function defaultSave() {
-    return { version: 1, florins: 0, unlockedLevel: 1, cleared: {}, ranks: {} };
+    return { version: 2, florins: 0, unlockedLevel: 1, cleared: {}, ranks: {} };
   }
 
   const rankOf = (save, id) => save.ranks[id] || 0;
