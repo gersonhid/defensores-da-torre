@@ -4,7 +4,7 @@
  * versão mais nova; sem internet usa o que ficou guardado.
  * Ao publicar mudanças grandes, aumente a VERSAO para limpar o cache antigo.
  */
-const VERSAO = 'v5';
+const VERSAO = 'v6';
 const CACHE = 'defensores-' + VERSAO;
 const ESSENCIAIS = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css', 'fonts/PixelifySans.woff2',

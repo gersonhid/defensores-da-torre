@@ -22,7 +22,7 @@
 Ajustes em `www/js/config.js`: `levels.bossEvery`, `bossHpMult`, `bossDmgMult`, `bossDelay`,
 stats de cada chefão em `enemies`, e a seção `ads` (vida ao reviver, raio/tempo do atordoamento).
 
-## Resultado do simulador (perfil médio, 6 campanhas)
+## Resultado do simulador (perfil médio, 6 campanhas — invasores surgindo de todo o contorno do mapa)
 
 ```bash
 node tools/simulate.js --levels 50 --seeds 6          # sem anúncios
@@ -32,11 +32,11 @@ node tools/simulate.js --levels 50 --seeds 6 --ads    # bot assiste: reviver ao 
 
 | | Sem anúncios | Com anúncios |
 |---|---|---|
-| Tentativas por nível normal | 1,27 | 1,00 |
-| Tentativas por nível de chefão | 1,57 (2–4 nos chefões dos níveis 18–30) | 1,05 |
-| Tempo para terminar a campanha | 2,9 h | 2,1 h |
-| Anúncios assistidos | – | ~22 por campanha (≈ 1 a cada 2 níveis) |
-| Campanhas que travaram | 1/6 (no nível 50, o último) | 0/6 |
+| Tentativas por nível normal | 1,35 | 1,04 |
+| Tentativas por nível de chefão | 1,67 (2–3 nos chefões dos níveis 18–48) | 1,09 |
+| Tempo para terminar a campanha | 3,0 h | 2,2 h |
+| Anúncios assistidos | – | ~31 por campanha (≈ 1 a cada 1,6 níveis) |
+| Campanhas que travaram | 0/6 | 0/6 |
 
 Os chefões até o nível 15 passam de primeira, mas com a torre quase destruída — é onde o jogador
 descobre o "Reviver". A partir do nível 18 cada chefão vira o "muro" da fase.

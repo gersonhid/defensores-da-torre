@@ -134,14 +134,14 @@
   P.spawn = function (type) {
     const def = CFG.enemies[type];
     const lv = this.level;
-    const span = CFG.world.cornerSpan;
-    const corner = Math.floor(this.rng() * 4);
-    const cx = corner % 2 === 0 ? 0 : W;
-    const cy = corner < 2 ? 0 : H;
-    const sx = cx === 0 ? 1 : -1, sy = cy === 0 ? 1 : -1;
+    // ponto aleatório em todo o contorno do mapa (uniforme pelo perímetro), um pouco para fora da borda
+    const m = CFG.world.spawnMargin;
+    let d = this.rng() * 2 * (W + H);
     let x, y;
-    if (this.rng() < 0.5) { x = cx + sx * this.rng() * span; y = cy - sy * 20; }
-    else { x = cx - sx * 20; y = cy + sy * this.rng() * span; }
+    if (d < W) { x = d; y = -m; }
+    else if ((d -= W) < H) { x = W + m; y = d; }
+    else if ((d -= H) < W) { x = W - d; y = H + m; }
+    else { d -= W; x = -m; y = H - d; }
     const hp = def.hp * lv.hpMult * (def.boss ? (CFG.levels.bossHpMult || 1) : 1);
     this.enemies.push({
       type, def, x, y, r: def.radius,

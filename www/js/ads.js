@@ -8,6 +8,9 @@
   'use strict';
   const CONF = root.TD_ADS_CONFIG || { provider: 'off' };
   let provider = CONF.provider || 'off';
+  // dentro do app nativo (Capacitor) com o plugin AdMob instalado, usa AdMob automaticamente
+  const inApp = !!(root.Capacitor && root.Capacitor.isNativePlatform && root.Capacitor.isNativePlatform());
+  if (CONF.autoAdmobInApp && inApp && root.Capacitor.Plugins && root.Capacitor.Plugins.AdMob) provider = 'admob';
   let busy = false;
 
   // ---------- simulado (testes) ----------
@@ -75,9 +78,10 @@
     try { await admob.initialize({ initializeForTesting: !!CONF.admob.test }); }
     catch (e) { console.warn('[anúncios] AdMob falhou:', e); provider = 'off'; }
   }
-  async function showAdMob() {
+  async function showAdMob(placement) {
+    const adId = (CONF.admob.units && CONF.admob.units[placement]) || CONF.admob.rewardedId;
     try {
-      await admob.prepareRewardVideoAd({ adId: CONF.admob.rewardedId, isTesting: !!CONF.admob.test });
+      await admob.prepareRewardVideoAd({ adId, isTesting: !!CONF.admob.test });
       const reward = await admob.showRewardVideoAd();
       return !!reward;
     } catch (e) { console.warn('[anúncios] sem anúncio:', e); return false; }
@@ -100,7 +104,7 @@
     try {
       if (provider === 'simulado') return await showSimulated(placement);
       if (provider === 'h5') return await showH5(placement);
-      if (provider === 'admob') return await showAdMob();
+      if (provider === 'admob') return await showAdMob(placement);
       return false;
     } finally { busy = false; }
   }

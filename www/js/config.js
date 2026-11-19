@@ -17,7 +17,12 @@
   return {
     // Mapa mais "fundo" que largo: depois de inclinado ele preenche uma tela horizontal.
     // Distância canto -> torre ≈ 750 (quase igual à versão retrato, preserva o balanceamento).
-    world: { width: 1120, height: 1000, cornerSpan: 200 },
+    // spawnMargin: distância fora da borda onde os invasores surgem (vêm de qualquer ponto do contorno)
+    world: { width: 1120, height: 1000, spawnMargin: 30 },
+
+    // ---------------- TOQUE ----------------
+    // A mira fica acima do dedo para não ser escondida por ele (em pixels da tela; 0 = sob o dedo).
+    input: { touchAimOffset: 80 },
 
     // ---------------- CÂMERA / PIXEL ART (só visual) ----------------
     // pixelHeight: altura da tela interna em pixels "gordos" (menor = pixels maiores).
@@ -84,7 +89,7 @@
                 range: 8,   armor: 2, reward: 35, threat: 0,   radius: 22, boss: true, bossFrom: 1 },
       chefe_orc: { name: 'Senhor da Guerra Orc', icon: '👹', color: '#33691e', hp: 950, speed: 32, damage: 32, interval: 1.6,
                 range: 10,  armor: 5, reward: 60, threat: 0,   radius: 28, boss: true, bossFrom: 10 },
-      ogro:   { name: 'Ogro Chefe', icon: '👿', color: '#b33939', hp: 1000, speed: 27, damage: 45, interval: 2.0,
+      ogro:   { name: 'Ogro Chefe', icon: '👿', color: '#b33939', hp: 880, speed: 27, damage: 45, interval: 2.0,
                 range: 12,  armor: 8, reward: 90, threat: 0,   radius: 34, boss: true, bossFrom: 22 },
       troll_anciao: { name: 'Troll Ancião', icon: '🗿', color: '#455a64', hp: 1250, speed: 24, damage: 60, interval: 2.2,
                 range: 12,  armor: 10, reward: 130, threat: 0, radius: 38, boss: true, bossFrom: 37 },
@@ -94,7 +99,7 @@
     levels: {
       baseThreat: 13,       // ameaça da 1ª onda do nível 1 (~13 goblins)
       // multiplicador de ameaça = 1 + threatLinear*(N-1) + threatQuad*(N-1)^2
-      threatLinear: 0.13, threatQuad: 0.0019,
+      threatLinear: 0.115, threatQuad: 0.0008,
       waveThreatStep: 0.15, // cada onda dentro do nível é +15% maior
       wavesBase: 3, wavesEvery: 4, wavesMax: 8,
       hpGrowth: 1.025,      // +2.5% vida dos inimigos por nível
@@ -103,7 +108,7 @@
       waveDuration: 14, waveGap: 5, firstDelay: 2,
       bossEvery: 3,         // fase = 3 níveis; o último termina com um chefão
       bossDelay: 3,         // segundos após a última onda até o chefão entrar
-      bossHpMult: 3.5,      // força dos chefões: multiplicador de vida
+      bossHpMult: 3.0,      // força dos chefões: multiplicador de vida
       bossDmgMult: 2.5,     // força dos chefões: multiplicador de dano
     },
 

@@ -169,7 +169,7 @@
       if (w === nWaves - 1 && isBossLevel(level)) {
         // chefão entra depois da última onda (é o "final" da fase)
         const type = bossFor(level);
-        const bosses = level >= 48 ? 2 : 1;
+        const bosses = 1;
         for (let b = 0; b < bosses; b++) spawns.push({ t: t + L.waveDuration + (L.bossDelay || 0) + b * 4, type, wave: w });
       }
       t += L.waveDuration + L.waveGap;

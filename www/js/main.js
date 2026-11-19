@@ -425,12 +425,18 @@
   $('pause-quit').onclick = () => { game.tower.hp = 0; game.state = 'lost'; game.endScheduled = true; paused = false; endGame(); };
 
   // entrada: dedo/ponteiro = mira
+  // No toque, a mira fica acima do dedo (config.input.touchAimOffset) para o dedo não escondê-la.
   function pointerWorld(ev) {
-    const p = renderer.toWorld(ev.clientX, ev.clientY);
+    const touch = ev.pointerType === 'touch' || ev.pointerType === 'pen';
+    const off = touch ? (CFG.input.touchAimOffset || 0) : 0;
+    const p = renderer.toWorld(ev.clientX, ev.clientY - off);
     p.x = Math.max(0, Math.min(CFG.world.width, p.x));
     p.y = Math.max(0, Math.min(CFG.world.height, p.y));
+    ui.finger = touch ? renderer.toScreen(ev.clientX, ev.clientY) : null;
     return p;
   }
+  canvas.addEventListener('pointerup', () => { ui.finger = null; });
+  canvas.addEventListener('pointercancel', () => { ui.finger = null; });
   canvas.addEventListener('pointerdown', (ev) => {
     if (!game || paused) return;
     const p = pointerWorld(ev);

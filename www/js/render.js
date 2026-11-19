@@ -44,6 +44,11 @@
     this.groundLayer = this.groundTex ? projectGround(this.groundTex, this.cam, SPR.store.backdrop) : null;
   };
 
+  // posição na janela (CSS px) -> pixels da tela interna
+  Renderer.prototype.toScreen = function (clientX, clientY) {
+    return { x: clientX / window.innerWidth * this.canvas.width, y: clientY / window.innerHeight * this.canvas.height };
+  };
+
   // posição na janela (CSS px) -> chão do mundo
   Renderer.prototype.toWorld = function (clientX, clientY) {
     const sx = clientX / window.innerWidth * this.canvas.width;
@@ -64,16 +69,11 @@
       const left = r() < 0.5;
       spots.push({ x: left ? -40 - r() * 420 : W + 40 + r() * 420, y: r() * H });
     }
-    // algumas árvores esparsas dentro do mapa, longe das trilhas e da torre
-    for (let i = 0; i < 14; i++) {
-      const x = 60 + r() * (W - 120), y = 40 + r() * (H - 80);
-      const dc = Math.hypot(x - W / 2, y - H / 2);
-      const nearPath = [[0, 0], [W, 0], [0, H], [W, H]].some(([cx, cy]) => {
-        const t = ((x - cx) * (W / 2 - cx) + (y - cy) * (H / 2 - cy)) / ((W / 2 - cx) ** 2 + (H / 2 - cy) ** 2);
-        const px = cx + (W / 2 - cx) * t, py = cy + (H / 2 - cy) * t;
-        return Math.hypot(x - px, y - py) < 110;
-      });
-      if (dc > CFG.heroDefaults.leash + 40 && !nearPath) spots.push({ x, y });
+    // poucas árvores esparsas dentro do mapa, longe da torre e fora da faixa da frente
+    // (para não esconder invasores que vêm da borda de baixo)
+    for (let i = 0; i < 10; i++) {
+      const x = 60 + r() * (W - 120), y = 40 + r() * (H - 260);
+      if (Math.hypot(x - W / 2, y - H / 2) > CFG.heroDefaults.leash + 60) spots.push({ x, y });
     }
     return spots;
   }
@@ -106,21 +106,25 @@
         g.fillStyle = '#6fa548'; g.fillRect(x + 1, y - 1, 1, 3);
       }
     }
-    // trilhas de terra dos cantos até a torre
+    // manchas de terra batida espalhadas (os invasores vêm de qualquer direção)
     const dirt = ['#8a6a45', '#7b5c3b', '#977552', '#6e5134'];
-    [[0, 0], [W, 0], [0, H], [W, H]].forEach(([cx, cy]) => {
-      const ex = cx + (cx === 0 ? -260 : 260), ey = cy + (cy === 0 ? -240 : 240);
-      for (let t = 0; t <= 1; t += 0.0015) {
-        const x = ex + (W / 2 - ex) * t, y = ey + (H / 2 - ey) * t;
-        const wob = Math.sin(t * 9 + cx * 0.01) * 18;
-        const width = 28 + Math.sin(t * 23) * 4;
-        for (let k = 0; k < 6; k++) {
-          const ox = (r() - 0.5) * width * 2 + wob, oy = (r() - 0.5) * width * 2;
-          g.fillStyle = dirt[(r() * dirt.length) | 0];
-          g.fillRect(wx(x + ox) | 0, wy(y + oy) | 0, 2, 2);
-        }
+    for (let p = 0; p < 26; p++) {
+      const cx = r() * W, cy = r() * H;
+      if (Math.hypot(cx - W / 2, cy - H / 2) < 140) continue;
+      const rx = 30 + r() * 70, ry = 20 + r() * 50;
+      for (let k = 0; k < rx * ry * 0.35; k++) {
+        const a = r() * Math.PI * 2, d = Math.sqrt(r());
+        g.fillStyle = dirt[(r() * dirt.length) | 0];
+        g.fillRect(wx(cx + Math.cos(a) * rx * d) | 0, wy(cy + Math.sin(a) * ry * d) | 0, 2, 2);
       }
-    });
+    }
+    // anel de terra pisoteada em volta do pátio
+    for (let i = 0; i < 2200; i++) {
+      const a = r() * Math.PI * 2, d = 95 + r() * 60;
+      if (r() < d / 160 - 0.35) continue;
+      g.fillStyle = dirt[(r() * dirt.length) | 0];
+      g.fillRect(wx(W / 2 + Math.cos(a) * d) | 0, wy(H / 2 + Math.sin(a) * d) | 0, 2, 2);
+    }
     // pátio de pedra em volta da torre
     for (let i = 0; i < 2600; i++) {
       const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 95;
@@ -391,6 +395,16 @@
     const a = game.aim;
     if (!a.active) return;
     const st = game.stats.aim;
+    // linha pontilhada discreta do dedo até a mira (só no toque, enquanto o dedo está na tela)
+    if (ui && ui.finger) {
+      const target = ui.armedPower && ui.pointer ? ui.pointer : a;
+      const t = this.cam.project(target.x, target.y);
+      const ctx0 = this.ctx;
+      ctx0.fillStyle = 'rgba(255,255,255,0.45)';
+      const dx = t.x - ui.finger.x, dy = t.y - ui.finger.y;
+      const n = Math.max(1, Math.floor(Math.hypot(dx, dy) / 4));
+      for (let i = 1; i < n; i += 2) ctx0.fillRect(R(ui.finger.x + dx * i / n), R(ui.finger.y + dy * i / n), 1, 1);
+    }
     const charge = 1 - Math.max(0, a.cd) / st.interval;
     this.groundEllipse(a.x, a.y, st.radius, 'rgba(255,60,60,0.10)', 'rgba(255,60,60,0.95)');
     // anel de recarga
