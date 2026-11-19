@@ -1,0 +1,19 @@
+{
+  "name": "defensores-da-torre-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API de contas, progresso e registro de jogadores do Defensores da Torre",
+  "main": "src/index.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "test": "node test/api.test.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "optionalDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  }
+}

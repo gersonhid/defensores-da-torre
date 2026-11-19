@@ -4,3 +4,5 @@ android/.gradle/
 android/build/
 *.apk
 *.aab
+server/node_modules/
+server/data/

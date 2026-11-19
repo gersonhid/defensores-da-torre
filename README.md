@@ -27,8 +27,8 @@ www/                 o jogo (HTML5 Canvas, sem dependências, sem build)
   js/render.js       desenho em pixel art
   js/ads.js          anúncios recompensados (simulado / H5 / AdMob)
   js/ads-config.js   escolha do provedor de anúncios
-  js/cloud.js        contas e progresso na nuvem (Firebase)
-  js/firebase-config.js  configuração do Firebase (null = só local)
+  js/cloud.js        contas e progresso na nuvem (cliente da API em server/)
+  js/server-config.js  endereço da API e do login Google (null = só local)
   js/main.js         telas, toque, salvamento
   assets/            imagens (ver docs/ARTE.md)
 tools/simulate.js    simulador de balanceamento
@@ -36,8 +36,8 @@ tools/serve.js       servidor local para testes
 docs/BALANCEAMENTO.md  metas, fórmulas, resultados e como ajustar
 docs/ARTE.md           prompts do Gemini e especificação das imagens
 docs/ANUNCIOS.md       anúncios recompensados, fases/chefões e provedores (AdMob / H5)
-docs/CONTAS.md         login (Google / usuário), nuvem e dados coletados — passo a passo do Firebase
-firestore.rules        regras de segurança do banco
+docs/CONTAS.md         contas, progresso na nuvem e dados dos jogadores — servidor no Railway
+server/                API Node.js + PostgreSQL (contas, progresso, registro de aparelhos)
 capacitor.config.json  empacotamento Android
 ```
 

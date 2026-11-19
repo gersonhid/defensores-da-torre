@@ -76,7 +76,12 @@
           : st.mode === 'connecting' ? 'Conectando ao servidor...'
             : 'Contas indisponíveis no momento (sem internet ou servidor não configurado). Seu progresso fica salvo neste aparelho.';
     const canLogin = st.mode === 'guest';
-    $('acc-google').classList.toggle('hidden', !canLogin);
+    $('acc-google').classList.toggle('hidden', !canLogin || !CLOUD.googleEnabled);
+    if (canLogin && CLOUD.googleEnabled) {
+      CLOUD.renderGoogleButton($('acc-google'), (credential) =>
+        accAction(() => CLOUD.loginGoogleCredential(credential), 'Conectado com o Google!'))
+        .catch((e) => setAccMsg(e.message));
+    }
     $('acc-form').classList.toggle('hidden', !canLogin);
     $('acc-logout').classList.toggle('hidden', st.mode !== 'account');
   }
@@ -102,7 +107,6 @@
     renderAccount();
   }
   $('btn-account').onclick = () => { setAccMsg(''); show('account', true); };
-  $('acc-google').onclick = () => accAction(() => CLOUD.loginGoogle(), 'Conectado com o Google!');
   $('acc-create').onclick = () => accAction(() => CLOUD.createAccount($('acc-user').value, $('acc-pass').value), 'Conta criada!');
   $('acc-login').onclick = () => accAction(() => CLOUD.login($('acc-user').value, $('acc-pass').value), 'Bem-vindo de volta!');
   $('acc-logout').onclick = () => accAction(() => CLOUD.logout(), 'Você saiu. O progresso continua neste aparelho.');

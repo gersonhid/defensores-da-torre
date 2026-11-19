@@ -195,3 +195,4 @@ p { margin: 0; line-height: 1.35; font-size: 15px; }
 .ad-body { font-size: 40px; line-height: 1.2; color: #ddd; padding: 16px 0; }
 .ad-body small { font-size: 13px; color: #888; }
 .ad-count { font-size: 16px; }
+.acc-google { min-height: 44px; }
