@@ -1,5 +1,9 @@
 # Balanceamento — Defensores da Torre
 
+> **Atualização:** o jogo agora é dividido em fases de 3 níveis com chefão no fim de cada fase, e tem
+> anúncios recompensados. Os números atuais (com e sem anúncios) estão em [ANUNCIOS.md](ANUNCIOS.md).
+> As tabelas abaixo descrevem as fórmulas base, que continuam valendo.
+
 Todos os números ficam em **`www/js/config.js`**. O simulador **`tools/simulate.js`** joga a campanha
 inteira com um bot que usa **o mesmo motor do jogo** (`www/js/engine.js`). Altere um número,
 rode a simulação e compare.

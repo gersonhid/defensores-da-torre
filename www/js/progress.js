@@ -128,6 +128,17 @@
   }
 
   // ---------- geração de níveis ----------
+  function isBossLevel(level) { return level % CFG.levels.bossEvery === 0; }
+  // chefão da faixa de níveis (o de maior bossFrom que já foi alcançado)
+  function bossFor(level) {
+    let best = null;
+    Object.entries(CFG.enemies).forEach(([id, e]) => {
+      if (e.boss && e.bossFrom <= level && (!best || e.bossFrom > CFG.enemies[best].bossFrom)) best = id;
+    });
+    return best;
+  }
+  function phaseOf(level) { return Math.ceil(level / CFG.levels.bossEvery); }
+
   function threatMult(level) {
     const L = CFG.levels, n = level - 1;
     return 1 + L.threatLinear * n + L.threatQuad * n * n;
@@ -155,9 +166,11 @@
       }
       const spacing = L.waveDuration / Math.max(1, list.length);
       list.forEach((type, i) => spawns.push({ t: t + i * spacing, type, wave: w }));
-      if (w === nWaves - 1 && level % L.bossEvery === 0) {
-        const bosses = level >= 40 ? 2 : 1;
-        for (let b = 0; b < bosses; b++) spawns.push({ t: t + L.waveDuration * (0.4 + 0.2 * b), type: 'ogro', wave: w });
+      if (w === nWaves - 1 && isBossLevel(level)) {
+        // chefão entra depois da última onda (é o "final" da fase)
+        const type = bossFor(level);
+        const bosses = level >= 48 ? 2 : 1;
+        for (let b = 0; b < bosses; b++) spawns.push({ t: t + L.waveDuration + (L.bossDelay || 0) + b * 4, type, wave: w });
       }
       t += L.waveDuration + L.waveGap;
     }
@@ -174,6 +187,6 @@
 
   return {
     CFG, nodeById, makeRng, defaultSave, rankOf, nodeCost, reqMet, canBuy, buy,
-    computeStats, summonPoints, victoryReward, generateLevel, threatMult,
+    computeStats, summonPoints, victoryReward, generateLevel, threatMult, isBossLevel, bossFor, phaseOf,
   };
 });

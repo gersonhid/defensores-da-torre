@@ -9,7 +9,8 @@ cada fase e evolui tudo com os Florins ganhos nas batalhas.
 * **Evolução:** teia de 45 nós a partir de uma única raiz; os guerreiros são liberados em sequência
   (Bárbaro → Arqueiro → Anão → Elfo → Mago) e cada evolução abre as seguintes
 * **Contas:** convidado (só no aparelho), Google ou nome de usuário (progresso na nuvem)
-* **Campanha:** 50 níveis, chefe a cada 5, depois modo infinito
+* **Campanha:** 50 níveis em fases de 3, com um chefão no fim de cada fase; depois modo infinito
+* **Anúncios recompensados (opcionais):** reviver a torre e dobrar Florins — ver docs/ANUNCIOS.md
 
 ## Estrutura
 
@@ -24,6 +25,8 @@ www/                 o jogo (HTML5 Canvas, sem dependências, sem build)
   js/camera.js       câmera inclinada (perspectiva) e conversão do toque para o chão
   js/sprites.js      carrega a arte do Gemini (remove fundo magenta, repixeliza) + placeholders
   js/render.js       desenho em pixel art
+  js/ads.js          anúncios recompensados (simulado / H5 / AdMob)
+  js/ads-config.js   escolha do provedor de anúncios
   js/cloud.js        contas e progresso na nuvem (Firebase)
   js/firebase-config.js  configuração do Firebase (null = só local)
   js/main.js         telas, toque, salvamento
@@ -32,6 +35,7 @@ tools/simulate.js    simulador de balanceamento
 tools/serve.js       servidor local para testes
 docs/BALANCEAMENTO.md  metas, fórmulas, resultados e como ajustar
 docs/ARTE.md           prompts do Gemini e especificação das imagens
+docs/ANUNCIOS.md       anúncios recompensados, fases/chefões e provedores (AdMob / H5)
 docs/CONTAS.md         login (Google / usuário), nuvem e dados coletados — passo a passo do Firebase
 firestore.rules        regras de segurança do banco
 capacitor.config.json  empacotamento Android

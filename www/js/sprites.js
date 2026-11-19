@@ -32,6 +32,9 @@
     xama:     { src: 'assets/chars/xama.png',     type: 'sprite', frames: 1 },
     troll:    { src: 'assets/chars/troll.png',    type: 'sprite', frames: 1 },
     ogro:     { src: 'assets/chars/ogro.png',     type: 'sprite', frames: 1 },
+    chefe_goblin: { src: 'assets/chars/chefe_goblin.png', type: 'sprite', frames: 1 },
+    chefe_orc:    { src: 'assets/chars/chefe_orc.png',    type: 'sprite', frames: 1 },
+    troll_anciao: { src: 'assets/chars/troll_anciao.png', type: 'sprite', frames: 1 },
   };
 
   // altura visual (mundo) de cada personagem
@@ -84,6 +87,9 @@
     xama:     { h: '#5b2a86', s: '#9b7fd1', b: '#4a2a6a', l: '#3a2054', d: '#1f1030', w: 'staff' },
     troll:    { h: '#4a5560', s: '#7d8c99', b: '#5b4a3a', l: '#4a3a2c', d: '#2a2018', w: 'club' },
     ogro:     { h: '#5a1010', s: '#c0504d', b: '#4a3020', l: '#3a2418', d: '#20120a', w: 'club' },
+    chefe_goblin: { h: '#e1b12c', s: '#8bc34a', b: '#8e2b2b', l: '#5c3d22', d: '#2e1f10', w: 'axe' },
+    chefe_orc:    { h: '#1b1b1b', s: '#33691e', b: '#8a8a8a', l: '#4a4a4a', d: '#222222', w: 'hammer' },
+    troll_anciao: { h: '#cfd8dc', s: '#607d8b', b: '#3e2723', l: '#2e1d16', d: '#1a120d', w: 'club', beard: '#cfd8dc' },
     lobo:     { g: '#7f8c8d', e: '#ffdd00', d: '#4a4f50' },
   };
 

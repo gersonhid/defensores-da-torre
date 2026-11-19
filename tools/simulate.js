@@ -31,6 +31,8 @@ const LEVELS = +opt('levels', 40);
 const SEEDS = +opt('seeds', 6);
 const MAX_ATTEMPTS = +opt('attempts', 8);
 const NO_UPGRADE = !!opt('noupgrade', false);
+// --ads: o bot assiste anúncios (revive ao perder; dobra Florins ao perder ou em nível de chefão)
+const ADS = !!opt('ads', false);
 const DT = 1 / 30;
 
 function playLevel(level, save, rng) {
@@ -39,15 +41,22 @@ function playLevel(level, save, rng) {
   const loadout = BOT.autoLoadout(pts, stats);
   const game = new Game({ levelData: P.generateLevel(level, rng), stats, loadout, rng, visual: false });
   const bot = new BOT.AimBot(PROFILE, rng);
-  while (game.state === 'running' && game.t < 900) {
-    bot.tick(game, DT);
-    game.update(DT);
+  let ads = 0;
+  for (;;) {
+    while (game.state === 'running' && game.t < 900) {
+      bot.tick(game, DT);
+      game.update(DT);
+    }
+    if (ADS && game.canRevive()) { game.revive(); ads++; continue; }
+    break;
   }
-  return game.result();
+  const r = game.result();
+  r.ads = ads;
+  return r;
 }
 
 const rows = [];
-for (let L = 1; L <= LEVELS; L++) rows.push({ L, attempts: [], firstWin: 0, towerPct: [], florins: [], time: [], reached: 0, spent: [], dmg: {} });
+for (let L = 1; L <= LEVELS; L++) rows.push({ L, attempts: [], firstWin: 0, towerPct: [], florins: [], time: [], reached: 0, spent: [], dmg: {}, ads: [] });
 
 let stuckCount = 0;
 const unlockAt = {}; // id -> [nível em que foi comprado, por semente]
@@ -63,7 +72,9 @@ for (let seed = 1; seed <= SEEDS; seed++) {
       n++;
       const r = playLevel(L, save, rng);
       const first = !save.cleared[L];
-      const gain = r.florins + (r.won ? P.victoryReward(L, P.computeStats(save), first) : 0);
+      let gain = r.florins + (r.won ? P.victoryReward(L, P.computeStats(save), first) : 0);
+      if (ADS && CFG.ads.doubleFlorins && (!r.won || P.isBossLevel(L))) { gain *= 2; r.ads++; }
+      row.ads.push(r.ads);
       save.florins += gain;
       row.florins.push(gain);
       Object.entries(r.dmgBy).forEach(([k, v]) => { row.dmg[k] = (row.dmg[k] || 0) + v; });
@@ -85,7 +96,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
 const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN);
 const pad = (s, n) => String(s).padStart(n);
 
-console.log(`\nPerfil: ${PROFILE}  |  sementes: ${SEEDS}  |  máx tentativas: ${MAX_ATTEMPTS}${NO_UPGRADE ? '  |  SEM EVOLUÇÃO' : ''}\n`);
+console.log(`\nPerfil: ${PROFILE}${ADS ? '  |  COM ANÚNCIOS' : '  |  sem anúncios'}  |  sementes: ${SEEDS}  |  máx tentativas: ${MAX_ATTEMPTS}${NO_UPGRADE ? '  |  SEM EVOLUÇÃO' : ''}\n`);
 console.log(' Nív | chegou | tentat. | 1ª vit% | torre% | Florins/tent | Florins gastos | duração | avaliação');
 console.log('-----+--------+---------+---------+--------+--------------+----------------+---------+-----------');
 for (const r of rows) {
@@ -116,6 +127,18 @@ for (const [a, b] of bands) {
   if (!tot) continue;
   console.log(`  ${pad(a, 2)}-${String(b > 100 ? '+' : b).padEnd(4)} | ` + SOURCES.map((s) => pad(((acc[s] || 0) / tot * 100).toFixed(1), 8)).join(' '));
 }
+
+// resumo por tipo de nível
+const sumAtt = (f) => { const a = rows.filter((r) => r.reached && f(r.L)).flatMap((r) => r.attempts); return a.length ? avg(a) : NaN; };
+console.log('\nResumo:');
+console.log(`  Tentativas médias — níveis normais: ${sumAtt((L) => !P.isBossLevel(L)).toFixed(2)}   níveis de chefão: ${sumAtt((L) => P.isBossLevel(L)).toFixed(2)}`);
+if (ADS) {
+  const allAds = rows.reduce((s, r) => s + r.ads.reduce((a, b) => a + b, 0), 0);
+  const lvls = rows.reduce((s, r) => s + r.reached, 0);
+  console.log(`  Anúncios assistidos: ${(allAds / SEEDS).toFixed(0)} por campanha  (≈ 1 a cada ${(lvls / Math.max(1, allAds)).toFixed(1)} níveis)`);
+}
+const tTot = rows.reduce((s, r) => s + r.time.reduce((a, b) => a + b, 0), 0) / SEEDS / 3600;
+console.log(`  Tempo de jogo da campanha: ${tTot.toFixed(1)} h`);
 
 console.log('\nNível médio em que cada desbloqueio é comprado:');
 CFG.tree.filter((n) => n.max === 1).forEach((n) => {

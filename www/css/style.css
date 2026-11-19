@@ -185,3 +185,13 @@ p { margin: 0; line-height: 1.35; font-size: 15px; }
 .btn.google { background: #f2f2f2; color: #222; font-weight: 700; }
 .acc-msg { font-size: 14px; color: #e8a87c; min-height: 18px; }
 .acc-msg.ok { color: #7bd36b; }
+
+/* ---------- anúncios ---------- */
+.rev-info { font-size: 15px; text-align: center; }
+.btn.ad-btn { background: #b8860b; font-weight: 700; }
+.ad-sim { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.92); display: flex; align-items: center; justify-content: center; }
+.ad-box { width: min(420px, 90vw); background: #111; border: 2px dashed #888; padding: 16px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.ad-tag { font-size: 12px; letter-spacing: 2px; color: #ffd32a; }
+.ad-body { font-size: 40px; line-height: 1.2; color: #ddd; padding: 16px 0; }
+.ad-body small { font-size: 13px; color: #888; }
+.ad-count { font-size: 16px; }

@@ -79,29 +79,44 @@
                 range: 190, armor: 0, reward: 6,  threat: 3.5, radius: 14, unlockLevel: 7,  weight: 2, ranged: true },
       troll:  { name: 'Troll',  icon: '🦍', color: '#576574', hp: 320, speed: 32,  damage: 28, interval: 1.6,
                 range: 10,  armor: 6, reward: 16, threat: 10,  radius: 24, unlockLevel: 10, weight: 1.2 },
-      ogro:   { name: 'Ogro Chefe', icon: '👿', color: '#b33939', hp: 1100, speed: 27, damage: 45, interval: 2.0,
-                range: 12,  armor: 8, reward: 90, threat: 0,   radius: 34, boss: true },
+      // CHEFÕES: aparecem no fim do último nível de cada fase. bossFrom = nível a partir do qual este é o chefe.
+      chefe_goblin: { name: 'Rei Goblin', icon: '👑', color: '#8bc34a', hp: 480, speed: 38, damage: 18, interval: 1.4,
+                range: 8,   armor: 2, reward: 35, threat: 0,   radius: 22, boss: true, bossFrom: 1 },
+      chefe_orc: { name: 'Senhor da Guerra Orc', icon: '👹', color: '#33691e', hp: 950, speed: 32, damage: 32, interval: 1.6,
+                range: 10,  armor: 5, reward: 60, threat: 0,   radius: 28, boss: true, bossFrom: 10 },
+      ogro:   { name: 'Ogro Chefe', icon: '👿', color: '#b33939', hp: 1000, speed: 27, damage: 45, interval: 2.0,
+                range: 12,  armor: 8, reward: 90, threat: 0,   radius: 34, boss: true, bossFrom: 22 },
+      troll_anciao: { name: 'Troll Ancião', icon: '🗿', color: '#455a64', hp: 1250, speed: 24, damage: 60, interval: 2.2,
+                range: 12,  armor: 10, reward: 130, threat: 0, radius: 38, boss: true, bossFrom: 37 },
     },
 
     // ---------------- GERAÇÃO DE NÍVEIS ----------------
     levels: {
       baseThreat: 13,       // ameaça da 1ª onda do nível 1 (~13 goblins)
       // multiplicador de ameaça = 1 + threatLinear*(N-1) + threatQuad*(N-1)^2
-      threatLinear: 0.12, threatQuad: 0.0021,
+      threatLinear: 0.13, threatQuad: 0.0019,
       waveThreatStep: 0.15, // cada onda dentro do nível é +15% maior
       wavesBase: 3, wavesEvery: 4, wavesMax: 8,
       hpGrowth: 1.025,      // +2.5% vida dos inimigos por nível
       dmgGrowth: 1.03,      // +3% dano dos inimigos por nível
       rewardGrowth: 1.0,    // +0% Florins por abate por nível
       waveDuration: 14, waveGap: 5, firstDelay: 2,
-      bossEvery: 5,         // chefe na última onda a cada 5 níveis
+      bossEvery: 3,         // fase = 3 níveis; o último termina com um chefão
+      bossDelay: 3,         // segundos após a última onda até o chefão entrar
+      bossHpMult: 3.5,      // força dos chefões: multiplicador de vida
+      bossDmgMult: 2.5,     // força dos chefões: multiplicador de dano
     },
+
+    // ---------------- ANÚNCIOS RECOMPENSADOS ----------------
+    // reviveHp: vida da torre ao reviver (fração). reviveStun: segundos que os inimigos ficam atordoados.
+    // doubleFlorins: o anúncio na tela de resultado repete os Florins ganhos na partida.
+    ads: { reviveHp: 0.5, reviveStun: 2.5, reviveRadius: 260, doubleFlorins: true },
 
     // ---------------- PONTOS DE CONVOCAÇÃO ----------------
     summon: { basePoints: 6, pointsPerLevel: 0.75 },
 
     // ---------------- ECONOMIA (Florins) ----------------
-    economy: { victoryBase: 25, victoryPerLevel: 10, replayVictoryFactor: 0.3 },
+    economy: { victoryBase: 15, victoryPerLevel: 8, replayVictoryFactor: 0.3 },
 
     // ---------------- CADEIA DE EVOLUÇÃO ----------------
     // custo do próximo nível = round(cost * growth^rankAtual)

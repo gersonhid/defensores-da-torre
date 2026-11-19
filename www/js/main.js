@@ -48,7 +48,7 @@
   window.addEventListener('resize', () => renderer.resize());
 
   // ---------- navegação ----------
-  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account'];
+  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account', 'revive'];
   function show(name, push) {
     SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
     if (push) screenStack.push(name); else screenStack = [name];
@@ -128,7 +128,8 @@
   // ---------- MENU ----------
   function levelTag(L) {
     if (L > CAMPAIGN_LEVELS) return '♾️ Modo Infinito';
-    if (L % CFG.levels.bossEvery === 0) return '👿 Chefe!';
+    if (P.isBossLevel(L)) return `Fase ${P.phaseOf(L)} · 👿 ${CFG.enemies[P.bossFor(L)].name}`;
+    if (L <= 50) return `Fase ${P.phaseOf(L)} · nível ${((L - 1) % CFG.levels.bossEvery) + 1}/${CFG.levels.bossEvery}` + (save.cleared[L] ? ' ✔' : '');
     if (save.cleared[L]) return '✔ concluído';
     return '';
   }
@@ -462,12 +463,45 @@
     });
   }
 
+  // ---------- ANÚNCIOS ----------
+  const ADS = window.TD_ADS;
+  function countAd(kind) {
+    save.stats = save.stats || {};
+    save.stats['ads_' + kind] = (save.stats['ads_' + kind] || 0) + 1;
+  }
+  function offerRevive() {
+    $('hud').classList.add('hidden');
+    $('rev-msg').textContent = '';
+    const t = game.tower;
+    $('rev-info').textContent = `Restam ${game.enemies.length} invasores em campo. Assista a um anúncio para reconstruir a torre com ${Math.round(CFG.ads.reviveHp * 100)}% da vida e atordoar quem estiver perto.`;
+    $('rev-watch').disabled = false;
+    show('revive');
+  }
+  $('rev-watch').onclick = async () => {
+    $('rev-watch').disabled = true;
+    $('rev-msg').textContent = 'Carregando anúncio...';
+    const ok = await ADS.showRewarded('reviver');
+    if (ok && game && game.revive()) {
+      countAd('reviver'); persist();
+      game.endScheduled = false;
+      $('screen-revive').classList.add('hidden');
+      screenStack = [];
+      $('hud').classList.remove('hidden');
+      updateHud();
+      return;
+    }
+    $('rev-watch').disabled = false;
+    $('rev-msg').textContent = ok ? '' : 'Anúncio não concluído ou indisponível. Tente de novo.';
+  };
+  $('rev-quit').onclick = () => endGame();
+
   function endGame() {
     const r = game.result();
     const L = game.levelNum;
     const first = !save.cleared[L];
     const bonus = r.won ? P.victoryReward(L, stats, first) : 0;
-    save.florins += r.florins + bonus;
+    const gained = r.florins + bonus;
+    save.florins += gained;
     if (r.won) {
       save.cleared[L] = true;
       save.unlockedLevel = Math.max(save.unlockedLevel, L + 1);
@@ -480,8 +514,24 @@
       ${r.won ? `<div>Torre: <b>${Math.round(r.towerPct * 100)}%</b></div>` : ''}
       <div>Florins dos abates: 💰 ${fmt(r.florins)}</div>
       ${r.won ? `<div>Bônus de vitória${first ? '' : ' (repetição)'}: 💰 ${fmt(bonus)}</div>` : ''}
-      <div class="big-gold">+ 💰 ${fmt(r.florins + bonus)}</div>
+      <div class="big-gold">+ 💰 <span id="res-gain">${fmt(gained)}</span></div>
       ${r.won ? '' : '<div style="color:var(--muted);font-size:14px">Dica: invista na Evolução e tente de novo!</div>'}`;
+    // anúncio: dobrar os Florins desta partida
+    const dbl = $('res-double');
+    const canDouble = CFG.ads.doubleFlorins && gained > 0 && ADS.available();
+    dbl.classList.toggle('hidden', !canDouble);
+    dbl.disabled = false;
+    dbl.textContent = `📺 Dobrar Florins (+${fmt(gained)})`;
+    dbl.onclick = async () => {
+      dbl.disabled = true;
+      const ok = await ADS.showRewarded('dobrar');
+      if (!ok) { dbl.disabled = false; dbl.textContent = '📺 Anúncio indisponível — tentar de novo'; return; }
+      save.florins += gained;
+      countAd('dobrar');
+      persist();
+      $('res-gain').textContent = fmt(gained * 2) + ' (x2)';
+      dbl.classList.add('hidden');
+    };
     $('res-next').classList.toggle('hidden', !r.won);
     $('res-next').onclick = () => { game = null; openPrep(L + 1); };
     $('res-retry').onclick = () => { game = null; openPrep(L); };
@@ -506,7 +556,9 @@
     if (game && game.state !== 'running' && !game.endScheduled) {
       game.endScheduled = true;
       updateHud();
-      setTimeout(endGame, 700);
+      // torre caiu: oferece reviver com anúncio (1x por partida)
+      if (game.canRevive() && ADS.available()) setTimeout(offerRevive, 600);
+      else setTimeout(endGame, 700);
     }
     renderer.draw(game, paused ? 0 : dt, ui);
     requestAnimationFrame(frame);
@@ -534,6 +586,7 @@
   show('menu');
   requestAnimationFrame(frame);
   renderer.load();
+  ADS.init();
 
   // conecta à nuvem (registra o jogador); com login, puxa o progresso mais avançado
   CLOUD.init().then(async (st) => {

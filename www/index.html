@@ -85,7 +85,7 @@
       <p><b>Heróis:</b> antes de cada nível, gaste <b>pontos de convocação</b> em guerreiros. Eles defendem a área ao redor da torre e renascem se morrerem.</p>
       <p><b>Poderes:</b> depois de desbloqueados na Evolução, podem ser comprados com pontos. Toque no botão do poder e depois no campo. Eles recarregam durante a partida.</p>
       <p><b>Florins:</b> cada invasor abatido dá Florins (mesmo em derrota). Vitórias dão bônus. Use-os na <b>Evolução</b>.</p>
-      <p>A cada 5 níveis um <b>Ogro Chefe</b> aparece na última onda.</p>
+      <p><b>Fases e chefões:</b> cada fase tem 3 níveis; o último termina com um <b>chefão</b>. Se a torre cair, você pode assistir a um anúncio para reviver (1 vez por partida). Na tela de resultado também dá para assistir e <b>dobrar os Florins</b>.</p>
       <button class="btn primary js-back">Voltar</button>
     </div>
   </div>
@@ -138,6 +138,17 @@
     </div>
   </div>
 
+  <!-- REVIVER (anúncio) -->
+  <div id="screen-revive" class="screen hidden">
+    <div class="panel">
+      <h2>💥 A torre caiu!</h2>
+      <p id="rev-info" class="rev-info"></p>
+      <button id="rev-watch" class="btn primary big">📺 Assistir e reviver</button>
+      <button id="rev-quit" class="btn">Desistir</button>
+      <div id="rev-msg" class="acc-msg"></div>
+    </div>
+  </div>
+
   <!-- RESULTADO -->
   <div id="screen-result" class="screen hidden">
     <div class="panel cols">
@@ -146,6 +157,7 @@
         <div id="res-body" class="res-body"></div>
       </div>
       <div class="col">
+        <button id="res-double" class="btn ad-btn hidden">📺 Dobrar Florins</button>
         <button id="res-next" class="btn primary big">Próximo nível</button>
         <button id="res-retry" class="btn">Tentar de novo</button>
         <button id="res-tree" class="btn">Evolução</button>
@@ -161,6 +173,8 @@
   <script src="js/camera.js"></script>
   <script src="js/sprites.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/ads-config.js"></script>
+  <script src="js/ads.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/cloud.js"></script>
   <script src="js/main.js"></script>

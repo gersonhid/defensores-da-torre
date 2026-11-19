@@ -142,10 +142,10 @@
     let x, y;
     if (this.rng() < 0.5) { x = cx + sx * this.rng() * span; y = cy - sy * 20; }
     else { x = cx - sx * 20; y = cy + sy * this.rng() * span; }
-    const hp = def.hp * lv.hpMult;
+    const hp = def.hp * lv.hpMult * (def.boss ? (CFG.levels.bossHpMult || 1) : 1);
     this.enemies.push({
       type, def, x, y, r: def.radius,
-      hp, maxHp: hp, speed: def.speed, damage: def.damage * lv.dmgMult, interval: def.interval,
+      hp, maxHp: hp, speed: def.speed, damage: def.damage * lv.dmgMult * (def.boss ? (CFG.levels.bossDmgMult || 1) : 1), interval: def.interval,
       range: def.range, armor: def.armor, reward: def.reward * lv.rewardMult, ranged: !!def.ranged,
       cd: def.interval * 0.5, slow: 0, slowT: 0, stunT: 0, dead: false, hitT: 0, anim: this.rng() * 6,
     });
@@ -215,6 +215,28 @@
 
     if (tw.hp <= 0) { tw.hp = 0; this.state = 'lost'; }
     else if (this.spawnIdx >= this.level.spawns.length && this.enemies.length === 0) this.state = 'won';
+  };
+
+  // Reviver (recompensa de anúncio): só uma vez por partida, só depois de perder.
+  P.canRevive = function () { return this.state === 'lost' && !this.revived; };
+  P.revive = function () {
+    if (!this.canRevive()) return false;
+    const A = CFG.ads;
+    const tw = this.tower;
+    this.revived = true;
+    this.state = 'running';
+    tw.hp = tw.maxHp * A.reviveHp;
+    // onda de choque: empurra e atordoa quem está perto
+    this.enemies.forEach((e) => {
+      const d = dist(e, tw);
+      if (d > A.reviveRadius) return;
+      const k = (A.reviveRadius - d) / Math.max(1, d);
+      e.x += (e.x - tw.x) * Math.min(k, 1.5);
+      e.y += (e.y - tw.y) * Math.min(k, 1.5);
+      e.stunT = Math.max(e.stunT, A.reviveStun);
+    });
+    this.addFx({ kind: 'explosion', x: tw.x, y: tw.y, r: A.reviveRadius, ttl: 0.8 });
+    return true;
   };
 
   P.currentWave = function () {

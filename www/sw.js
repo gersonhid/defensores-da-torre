@@ -4,13 +4,13 @@
  * versão mais nova; sem internet usa o que ficou guardado.
  * Ao publicar mudanças grandes, aumente a VERSAO para limpar o cache antigo.
  */
-const VERSAO = 'v2';
+const VERSAO = 'v3';
 const CACHE = 'defensores-' + VERSAO;
 const ESSENCIAIS = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css', 'fonts/PixelifySans.woff2',
   'icons/icon-192.png', 'icons/icon-512.png',
   'js/config.js', 'js/progress.js', 'js/engine.js', 'js/bot.js', 'js/camera.js',
-  'js/sprites.js', 'js/render.js', 'js/firebase-config.js', 'js/cloud.js', 'js/main.js', 'privacidade.html',
+  'js/sprites.js', 'js/render.js', 'js/ads-config.js', 'js/ads.js', 'js/firebase-config.js', 'js/cloud.js', 'js/main.js', 'privacidade.html',
 ];
 
 self.addEventListener('install', (e) => {
