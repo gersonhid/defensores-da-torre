@@ -1,0 +1,8 @@
+{
+  "appId": "com.defensores.torre",
+  "appName": "Defensores da Torre",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#1e3a1e"
+  }
+}

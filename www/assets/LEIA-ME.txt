@@ -1,0 +1,10 @@
+Coloque aqui as imagens geradas no Gemini (ver docs/ARTE.md):
+
+  tower.png      torre (fundo magenta #FF00FF)
+  ground.png     textura do chão vista de cima, que se repete
+  tree.png       árvore (fundo magenta)
+  backdrop.png   horizonte distante (opcional)
+  chars/         personagens (fase 2): barbaro.png, goblin.png, ...
+
+Arquivo que não existir continua usando o placeholder em pixel art do código.
+Teste com:  npm run serve   ->  http://localhost:8080

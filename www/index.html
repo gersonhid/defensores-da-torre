@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1e2a1a">
+  <title>Defensores da Torre</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="rotate" class="rotate hidden"><div class="rot-ico">🔄</div>Gire o celular<br>para jogar na horizontal</div>
+
+  <!-- HUD da partida -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hud-box"><span id="hud-level">Nível 1</span> · <span id="hud-wave">Onda 1/3</span></div>
+      <div class="hud-tower"><div id="hud-tower-bar"></div><span id="hud-tower-txt">600/600</span></div>
+      <div class="hud-box gold">💰 <span id="hud-florins">0</span></div>
+      <button id="btn-speed" class="hud-btn">1x</button>
+      <button id="btn-pause" class="hud-btn">II</button>
+    </div>
+    <div id="hud-powers" class="hud-powers"></div>
+    <div id="hud-hint" class="hud-hint">Toque e arraste para mirar</div>
+  </div>
+
+  <!-- MENU -->
+  <div id="screen-menu" class="screen">
+    <div class="panel cols">
+      <div class="col center">
+        <h1>Defensores<br>da Torre</h1>
+        <div class="florins-big">💰 <span class="js-florins">0</span> Florins</div>
+        <div class="level-select">
+          <button id="lvl-prev" class="btn small">◀</button>
+          <div><div class="lvl-label">Nível</div><div id="lvl-num" class="lvl-num">1</div><div id="lvl-tag" class="lvl-tag"></div></div>
+          <button id="lvl-next" class="btn small">▶</button>
+        </div>
+      </div>
+      <div class="col">
+        <button id="btn-play" class="btn primary big">⚔ Jogar</button>
+        <button id="btn-tree" class="btn big">Evolução</button>
+        <button id="btn-help" class="btn">Como jogar</button>
+        <button id="btn-reset" class="btn danger small">Apagar progresso</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AJUDA -->
+  <div id="screen-help" class="screen hidden">
+    <div class="panel scroll">
+      <h2>Como jogar</h2>
+      <p><b>Mira:</b> toque/arraste no campo. A mira dispara sozinha de tempos em tempos, causando dano em área. O anel amarelo mostra a recarga.</p>
+      <p><b>Heróis:</b> antes de cada nível, gaste <b>pontos de convocação</b> em guerreiros. Eles defendem a área ao redor da torre e renascem se morrerem.</p>
+      <p><b>Poderes:</b> depois de desbloqueados na Evolução, podem ser comprados com pontos. Toque no botão do poder e depois no campo. Eles recarregam durante a partida.</p>
+      <p><b>Florins:</b> cada invasor abatido dá Florins (mesmo em derrota). Vitórias dão bônus. Use-os na <b>Evolução</b>.</p>
+      <p>A cada 5 níveis um <b>Ogro Chefe</b> aparece na última onda.</p>
+      <button class="btn primary js-back">Voltar</button>
+    </div>
+  </div>
+
+  <!-- PREPARAÇÃO / CONVOCAÇÃO -->
+  <div id="screen-prep" class="screen hidden">
+    <div class="panel wide">
+      <div class="prep-head">
+        <h2 id="prep-title">Nível 1</h2>
+        <div id="prep-info" class="prep-info"></div>
+        <div class="points">Pontos <b id="prep-left">0</b>/<span id="prep-total">0</span></div>
+      </div>
+      <div class="cols grow">
+        <div class="col scroll"><h3>Heróis</h3><div id="prep-heroes" class="list"></div></div>
+        <div class="col scroll"><h3>Poderes</h3><div id="prep-powers" class="list"></div></div>
+      </div>
+      <div class="row">
+        <button class="btn js-back">Voltar</button>
+        <button id="prep-auto" class="btn">Auto</button>
+        <button id="prep-clear" class="btn">Limpar</button>
+        <button id="prep-start" class="btn primary">⚔ Batalha!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVOLUÇÃO -->
+  <div id="screen-tree" class="screen hidden">
+    <div class="panel wide tree-panel">
+      <div class="tree-head">
+        <button class="btn small js-back">◀ Voltar</button>
+        <h2>Evolução</h2>
+        <div class="florins-big">💰 <span class="js-florins">0</span></div>
+      </div>
+      <div id="tree-tabs" class="tabs"></div>
+      <div id="tree-nodes" class="nodes scroll"></div>
+    </div>
+  </div>
+
+  <!-- PAUSA -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="panel">
+      <h2>Pausado</h2>
+      <button id="pause-resume" class="btn primary big">Continuar</button>
+      <button id="pause-quit" class="btn danger">Desistir</button>
+    </div>
+  </div>
+
+  <!-- RESULTADO -->
+  <div id="screen-result" class="screen hidden">
+    <div class="panel cols">
+      <div class="col center">
+        <h2 id="res-title">Vitória!</h2>
+        <div id="res-body" class="res-body"></div>
+      </div>
+      <div class="col">
+        <button id="res-next" class="btn primary big">Próximo nível</button>
+        <button id="res-retry" class="btn">Tentar de novo</button>
+        <button id="res-tree" class="btn">Evolução</button>
+        <button id="res-menu" class="btn">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

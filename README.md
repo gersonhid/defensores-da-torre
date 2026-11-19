@@ -1,0 +1,71 @@
+# 🏰 Defensores da Torre
+
+Jogo mobile (Android, **horizontal**) de defesa de torre em **pixel art** com câmera inclinada. Invasores surgem dos cantos do mapa e marcham até a torre
+no centro. O jogador mira com o dedo (dano em área periódico), convoca heróis com pontos antes de
+cada fase e evolui tudo com os Florins ganhos nas batalhas.
+
+* **Heróis:** Bárbaro, Arqueiro, Anão, Elfo, Mago
+* **Poderes:** Raio, Chuva de Gelo, Meteoro (desbloqueados na evolução, comprados com pontos)
+* **Evolução:** 44 nós em 10 ramos (Torre, Mira, Comando, um por herói, Arcano, Tesouro)
+* **Campanha:** 50 níveis, chefe a cada 5, depois modo infinito
+
+## Estrutura
+
+```
+www/                 o jogo (HTML5 Canvas, sem dependências, sem build)
+  index.html
+  css/style.css
+  js/config.js       ★ TODOS os números de balanceamento
+  js/progress.js     cadeia de evolução, geração de níveis, recompensas
+  js/engine.js       lógica da partida (sem DOM, usada também pelo simulador)
+  js/bot.js          jogador automático (simulador + botão "Auto")
+  js/camera.js       câmera inclinada (perspectiva) e conversão do toque para o chão
+  js/sprites.js      carrega a arte do Gemini (remove fundo magenta, repixeliza) + placeholders
+  js/render.js       desenho em pixel art
+  js/main.js         telas, toque, salvamento
+  assets/            imagens (ver docs/ARTE.md)
+tools/simulate.js    simulador de balanceamento
+tools/serve.js       servidor local para testes
+docs/BALANCEAMENTO.md  metas, fórmulas, resultados e como ajustar
+docs/ARTE.md           prompts do Gemini e especificação das imagens
+capacitor.config.json  empacotamento Android
+```
+
+## Testar no PC
+
+```bash
+npm run serve          # http://localhost:8080
+```
+Abra no Chrome com a janela deitada (ou F12 → modo dispositivo → girar para horizontal).
+O mouse funciona como dedo. Use o servidor em vez de abrir o arquivo direto: via `file://` o
+navegador bloqueia o processamento das imagens.
+
+No console do navegador há um gancho de testes: `TD_DEBUG.addFlorins(5000)`, `TD_DEBUG.step(10)`.
+
+## Simular balanceamento
+
+```bash
+npm run sim            # ver docs/BALANCEAMENTO.md
+```
+
+## Gerar o app Android
+
+Requisitos: **Node 20+**, **Android Studio** (recente) e **JDK 21**. O Java 8 instalado nesta
+máquina não serve para o Android atual — use o JDK que vem com o Android Studio
+(`File → Settings → Build → Gradle → Gradle JDK`).
+
+```bash
+npm install
+npm run android:add     # cria a pasta android/ (só na primeira vez)
+npm run android:sync    # copia www/ para o projeto Android (rode após cada mudança)
+npm run android:open    # abre no Android Studio → Run ▶ ou Build → Generate APK
+```
+
+Depois do `android:add`, trave a tela na horizontal: em `android/app/src/main/AndroidManifest.xml`,
+na tag `<activity ...>`, adicione `android:screenOrientation="sensorLandscape"`.
+
+## Próximos passos sugeridos
+
+* Gerar a arte no Gemini seguindo `docs/ARTE.md` (cenário primeiro, personagens depois).
+* Testar a dificuldade dos níveis 1–10 com pessoas reais e ajustar `threatLinear`.
+* Conquistas/estrelas por nível (ex.: vencer com torre > 80%) para dar motivo de repetir níveis.
