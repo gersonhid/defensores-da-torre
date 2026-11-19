@@ -48,7 +48,23 @@ No console do navegador há um gancho de testes: `TD_DEBUG.addFlorins(5000)`, `T
 npm run sim            # ver docs/BALANCEAMENTO.md
 ```
 
-## Gerar o app Android
+## Jogar online / gerar APK pelo PWABuilder (sem instalar nada)
+
+**Jogo publicado:** https://gersonhid.github.io/defensores-da-torre/
+
+Cada `git push` na branch `main` republica o site automaticamente (`.github/workflows/pages.yml`).
+O jogo funciona offline depois da primeira visita (service worker em `www/sw.js`).
+
+Para gerar o pacote Android:
+1. Acesse https://www.pwabuilder.com e cole o endereço do jogo.
+2. Clique em **Package for stores → Android → Generate Package**.
+3. Baixe o `.zip`: ele traz o `.apk` (para instalar direto no celular), o `.aab` (para a Google
+   Play) e a **chave de assinatura** — guarde a chave e a senha, elas são necessárias para todas as
+   atualizações futuras na Play Store.
+
+Ao publicar mudanças grandes, aumente `VERSAO` em `www/sw.js` para os jogadores receberem a versão nova.
+
+## Gerar o app Android pelo Capacitor (alternativa local)
 
 Requisitos: **Node 20+**, **Android Studio** (recente) e **JDK 21**. O Java 8 instalado nesta
 máquina não serve para o Android atual — use o JDK que vem com o Android Studio
