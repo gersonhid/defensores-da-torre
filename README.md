@@ -35,10 +35,12 @@ tools/simulate.js    simulador de balanceamento
 tools/serve.js       servidor local para testes
 docs/BALANCEAMENTO.md  metas, fórmulas, resultados e como ajustar
 docs/ARTE.md           prompts do Gemini e especificação das imagens
+docs/ANDROID.md         compilar o app Android (Capacitor + AdMob) e publicar na Play Store
 docs/ANUNCIOS.md       anúncios recompensados, fases/chefões e provedores (AdMob / H5)
 docs/CONTAS.md         contas, progresso na nuvem e dados dos jogadores — servidor no Railway
 server/                API Node.js + PostgreSQL (contas, progresso, registro de aparelhos)
 capacitor.config.json  empacotamento Android
+android/               projeto Android nativo (Capacitor 8 + AdMob)
 ```
 
 ## Testar no PC
@@ -74,7 +76,9 @@ Para gerar o pacote Android:
 
 Ao publicar mudanças grandes, aumente `VERSAO` em `www/sw.js` para os jogadores receberem a versão nova.
 
-## Gerar o app Android pelo Capacitor (alternativa local)
+## Gerar o app Android pelo Capacitor (recomendado — necessário para o AdMob)
+
+Passo a passo completo (Android Studio, teste no celular, AAB assinado, Play Store): **docs/ANDROID.md**.
 
 Requisitos: **Node 20+**, **Android Studio** (recente) e **JDK 21**. O Java 8 instalado nesta
 máquina não serve para o Android atual — use o JDK que vem com o Android Studio

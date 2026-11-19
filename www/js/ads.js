@@ -70,21 +70,54 @@
   }
 
   // ---------- AdMob (app Capacitor) ----------
+  // Detalhe do plugin: showRewardVideoAd() só termina quando o jogador GANHA a recompensa.
+  // Se ele fechar antes, nada acontece — por isso usamos os eventos "Reward" e "Dismissed".
   let admob = null;
+  let admobPending = null;          // { resolve, rewarded }
+  const prepared = {};              // placement -> true quando já carregado
+  const unitOf = (placement) => (CONF.admob.units && CONF.admob.units[placement]) || CONF.admob.rewardedId;
+
+  function finishAdMob(ok) {
+    const p = admobPending;
+    admobPending = null;
+    if (p) p.resolve(ok);
+  }
+
+  async function prepareAdMob(placement) {
+    try {
+      await admob.prepareRewardVideoAd({ adId: unitOf(placement), isTesting: !!CONF.admob.test, immersiveMode: true });
+      prepared[placement] = true;
+    } catch (e) { prepared[placement] = false; console.warn('[anúncios] não carregou', placement, e && e.message); }
+  }
+
   async function initAdMob() {
     const P = root.Capacitor && root.Capacitor.Plugins;
     admob = P && P.AdMob;
     if (!admob) { provider = 'off'; return; }
-    try { await admob.initialize({ initializeForTesting: !!CONF.admob.test }); }
-    catch (e) { console.warn('[anúncios] AdMob falhou:', e); provider = 'off'; }
-  }
-  async function showAdMob(placement) {
-    const adId = (CONF.admob.units && CONF.admob.units[placement]) || CONF.admob.rewardedId;
     try {
-      await admob.prepareRewardVideoAd({ adId, isTesting: !!CONF.admob.test });
-      const reward = await admob.showRewardVideoAd();
-      return !!reward;
-    } catch (e) { console.warn('[anúncios] sem anúncio:', e); return false; }
+      await admob.initialize({ initializeForTesting: !!CONF.admob.test });
+      // consentimento (LGPD/GDPR): mostra o formulário do Google quando exigido
+      try {
+        const info = await admob.requestConsentInfo();
+        if (info.isConsentFormAvailable && info.status === 'REQUIRED') await admob.showConsentForm();
+      } catch (e) { console.warn('[anúncios] consentimento:', e && e.message); }
+      admob.addListener('onRewardedVideoAdReward', () => { if (admobPending) admobPending.rewarded = true; });
+      admob.addListener('onRewardedVideoAdDismissed', () => { if (admobPending) finishAdMob(admobPending.rewarded); });
+      admob.addListener('onRewardedVideoAdFailedToShow', () => finishAdMob(false));
+      // pré-carrega um anúncio de cada bloco para abrir rápido
+      Object.keys(CONF.admob.units || {}).forEach((pl) => prepareAdMob(pl));
+    } catch (e) { console.warn('[anúncios] AdMob falhou:', e); provider = 'off'; }
+  }
+
+  async function showAdMob(placement) {
+    if (!prepared[placement]) await prepareAdMob(placement);
+    if (!prepared[placement]) return false;
+    prepared[placement] = false;
+    const result = new Promise((resolve) => { admobPending = { resolve, rewarded: false }; });
+    admob.showRewardVideoAd({ adId: unitOf(placement) }).catch(() => finishAdMob(false));
+    const ok = await result;
+    prepareAdMob(placement); // já deixa o próximo carregando
+    return ok;
   }
 
   async function init() {

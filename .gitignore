@@ -6,3 +6,8 @@ android/build/
 *.aab
 server/node_modules/
 server/data/
+
+# chaves de assinatura do app (NUNCA publicar)
+*.jks
+*.keystore
+keystore.properties

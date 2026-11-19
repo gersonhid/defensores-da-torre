@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Defensores da Torre</string>
+    <string name="title_activity_main">Defensores da Torre</string>
+    <string name="package_name">com.towerdefence.run</string>
+    <string name="custom_url_scheme">com.towerdefence.run</string>
+</resources>
