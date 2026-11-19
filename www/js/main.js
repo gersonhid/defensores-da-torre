@@ -48,7 +48,7 @@
   window.addEventListener('resize', () => renderer.resize());
 
   // ---------- navegação ----------
-  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account', 'revive', 'invite'];
+  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account', 'revive', 'invite', 'bestiary'];
   function show(name, push) {
     SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
     if (push) screenStack.push(name); else screenStack = [name];
@@ -58,6 +58,7 @@
     if (name === 'tree') { treeSel = null; renderTree(); }
     if (name === 'account') renderAccount();
     if (name === 'invite') renderInvite();
+    if (name === 'bestiary') { besSel = besSel || BES.ENTRIES[0].key; renderBestiary(); }
   }
 
   // ---------- CONTA ----------
@@ -262,6 +263,9 @@
     $('lvl-tag').textContent = levelTag(selLevel);
     $('lvl-prev').disabled = selLevel <= 1;
     $('lvl-next').disabled = selLevel >= save.unlockedLevel;
+    const nb = BES.pendingCount(save);
+    $('btn-bestiary').textContent = '📖 Bestiário' + (nb ? ` 🎁${nb}` : '');
+    $('btn-bestiary').classList.toggle('ad-btn', nb > 0);
   }
   $('lvl-prev').onclick = () => { selLevel--; renderMenu(); };
   $('lvl-next').onclick = () => { selLevel++; renderMenu(); };
@@ -279,6 +283,120 @@
     save = P.defaultSave(); persist(); selLevel = 1; resetArmed = false;
     $('btn-reset').textContent = 'Apagar progresso';
     show('menu');
+  };
+
+  // ---------- BESTIÁRIO (docs/BESTIARIO.md) ----------
+  const BES = window.TD_BESTIARY;
+  let besSel = null;
+  $('btn-bestiary').onclick = () => show('bestiary', true);
+
+  function portrait(canvas, entry, hidden) {
+    if (BES.drawPortrait(canvas, entry.id, hidden)) return;
+    // arte ainda carregando: usa o ícone
+    const g = canvas.getContext('2d');
+    g.font = Math.round(canvas.height * 0.6) + 'px sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.globalAlpha = hidden ? 0.25 : 1;
+    g.fillText(entry.def.icon, canvas.width / 2, canvas.height / 2);
+    g.globalAlpha = 1;
+  }
+
+  function renderBestiary() {
+    const stats = P.computeStats(save);
+    const grid = $('bes-grid');
+    const sy = grid.scrollTop;
+    grid.innerHTML = '';
+    const groups = [
+      ['Heróis', BES.ENTRIES.filter((e) => e.kind === 'hero')],
+      ['Invasores', BES.ENTRIES.filter((e) => e.kind !== 'hero')],
+    ];
+    groups.forEach(([title, list]) => {
+      const found = list.filter((e) => BES.discovered(save, e, stats)).length;
+      const h = document.createElement('h3');
+      h.className = 'bes-title';
+      h.textContent = `${title} · ${found}/${list.length}`;
+      grid.appendChild(h);
+      const box = document.createElement('div');
+      box.className = 'bes-cards';
+      list.forEach((e) => {
+        const disc = BES.discovered(save, e, stats);
+        const b = document.createElement('button');
+        b.className = 'bes-card' + (disc ? '' : ' hidden-entry') + (BES.claimable(save, e, stats) ? ' claim' : '')
+          + (e.kind === 'boss' ? ' boss' : '') + (besSel === e.key ? ' sel' : '');
+        const c = document.createElement('canvas');
+        c.width = 64; c.height = 64;
+        portrait(c, e, !disc);
+        const name = document.createElement('span');
+        name.className = 'bes-name';
+        name.textContent = disc || e.kind === 'hero' ? e.def.name : '???';
+        b.append(c, name);
+        if (BES.claimable(save, e, stats)) {
+          const tag = document.createElement('span');
+          tag.className = 'bes-tag';
+          tag.textContent = '🎁';
+          b.appendChild(tag);
+        }
+        b.onclick = () => { besSel = e.key; renderBestiary(); };
+        box.appendChild(b);
+      });
+      grid.appendChild(box);
+    });
+    grid.scrollTop = sy;
+    const n = BES.pendingCount(save);
+    $('bes-all').classList.toggle('hidden', n < 2);
+    $('bes-all').textContent = `🎁 Coletar tudo (${n})`;
+    document.querySelectorAll('.js-florins').forEach((el) => { el.textContent = fmt(save.florins); });
+    renderBestiaryDetail(stats);
+  }
+
+  function renderBestiaryDetail(stats) {
+    const e = BES.ENTRIES.find((x) => x.key === besSel);
+    const d = $('bes-detail');
+    const disc = BES.discovered(save, e, stats);
+    const showName = disc || e.kind === 'hero';
+    const kindTag = e.kind === 'hero' ? '🛡️ Herói' : e.kind === 'boss' ? '👑 Chefão' : '⚔️ Invasor';
+    let body;
+    if (disc) {
+      const s = e.kind === 'hero' ? stats.heroes[e.id] : e.def;
+      const bossK = e.kind === 'boss' ? CFG.levels.bossHpMult : 1;
+      const bossD = e.kind === 'boss' ? CFG.levels.bossDmgMult : 1;
+      const kills = BES.data(save).kills[e.id] || 0;
+      body = `<p class="d-desc">${e.info.desc}</p>
+        <ul class="bes-stats">
+          <li>❤️ Vida <b>${fmt(s.hp * bossK)}</b></li>
+          <li>⚔️ Dano <b>${fmt(s.damage * bossD)}</b> ${s.range > 40 ? '🏹 à distância' : '🗡️ corpo a corpo'}</li>
+          <li>🛡️ Armadura <b>${fmt(s.armor)}</b> · 👟 Velocidade <b>${fmt(s.speed)}</b></li>
+          ${e.kind === 'hero' ? `<li>⭐ Custo <b>${s.cost}</b> pontos</li>` : `<li>💰 Por abate <b>${fmt(s.reward)}</b></li>`}
+          ${e.kind === 'hero' ? '' : `<li>☠️ Derrotados <b>${fmt(kills)}</b></li>`}
+        </ul>
+        <div class="d-req-t">${e.kind === 'hero' ? 'Valores atuais, com a sua Evolução' : 'Valores no nível 1'}</div>`;
+    } else {
+      body = `<p class="d-desc">${e.kind === 'hero'
+        ? 'Ainda não se juntou aos defensores. Desbloqueie na <b>Evolução</b>.'
+        : `Ainda não foi derrotado. Aparece a partir do <b>nível ${BES.firstLevel[e.id]}</b>.`}</p>`;
+    }
+    d.innerHTML = `
+      <canvas id="bes-pic" class="bes-pic" width="128" height="128"></canvas>
+      <div class="d-head"><span class="d-name">${showName ? e.def.name : '???'}</span></div>
+      <div class="d-rank">${kindTag}</div>
+      ${body}
+      <div id="bes-claim"></div>`;
+    portrait($('bes-pic'), e, !disc);
+    const box = $('bes-claim');
+    if (BES.data(save).claimed[e.key]) box.innerHTML = `<div class="d-max">✔ Recompensa coletada (💰 ${fmt(e.info.reward)})</div>`;
+    else if (disc) {
+      const b = btn(`🎁 Coletar 💰 ${fmt(e.info.reward)}`, () => {
+        const got = BES.claim(save, e.key);
+        if (got) { persist(); toast(`📖 +💰 ${fmt(got)} — ${e.def.name}`); renderBestiary(); }
+      });
+      b.classList.add('primary');
+      box.appendChild(b);
+    } else box.innerHTML = `<div class="d-req-t">Recompensa ao descobrir: 💰 ${fmt(e.info.reward)}</div>`;
+  }
+
+  $('bes-all').onclick = () => {
+    const got = BES.claimAll(save);
+    if (got) { persist(); toast(`📖 +💰 ${fmt(got)} — recompensas do bestiário`); renderBestiary(); }
   };
 
   // ---------- PREPARAÇÃO ----------
@@ -494,7 +612,11 @@
     if (st === 'maxed') { $('tree-buy').innerHTML = '<div class="d-max">★ Máximo</div>'; return; }
     const cost = P.nodeCost(n, rank);
     const b = btn(`${rank ? 'Melhorar' : (n.max === 1 ? 'Desbloquear' : 'Comprar')} · 💰 ${fmt(cost)}`, () => {
-      if (P.buy(save, n.id)) { persist(); renderTree(true); }
+      const before = BES.pendingCount(save);
+      if (P.buy(save, n.id)) {
+        persist(); renderTree(true);
+        if (BES.pendingCount(save) > before) toast('📖 Novo herói no bestiário! Colete a recompensa no menu.');
+      }
     }, st === 'locked' || save.florins < cost);
     b.classList.add('primary');
     $('tree-buy').appendChild(b);
@@ -631,6 +753,7 @@
     const bonus = r.won ? P.victoryReward(L, stats, first) : 0;
     const gained = r.florins + bonus;
     save.florins += gained;
+    const fresh = BES.recordKills(save, r.killsBy);
     if (r.won) {
       save.cleared[L] = true;
       save.unlockedLevel = Math.max(save.unlockedLevel, L + 1);
@@ -644,6 +767,7 @@
       <div>Florins dos abates: 💰 ${fmt(r.florins)}</div>
       ${r.won ? `<div>Bônus de vitória${first ? '' : ' (repetição)'}: 💰 ${fmt(bonus)}</div>` : ''}
       <div class="big-gold">+ 💰 <span id="res-gain">${fmt(gained)}</span></div>
+      ${fresh.length ? `<div class="res-new">📖 Novo no bestiário: <b>${fresh.map((id) => CFG.enemies[id].name).join(', ')}</b></div>` : ''}
       ${r.won ? '' : '<div style="color:var(--muted);font-size:14px">Dica: invista na Evolução e tente de novo!</div>'}`;
     // anúncio: dobrar os Florins desta partida
     const dbl = $('res-double');

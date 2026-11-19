@@ -73,6 +73,10 @@ seamless left-right edges.
 
 ## Fase 2 — Personagens (depois)
 
+> Os personagens também aparecem **ampliados no 📖 Bestiário** (ver [BESTIARIO.md](BESTIARIO.md)) —
+> silhueta e rosto bem legíveis valem ainda mais. Os chefões usam `chefe_goblin.png`, `chefe_orc.png`,
+> `ogro.png` e `troll_anciao.png`.
+
 Nomes dos arquivos em `www/assets/chars/`:
 `barbaro.png`, `arqueiro.png`, `anao.png`, `elfo.png`, `mago.png`,
 `goblin.png`, `lobo.png`, `orc.png`, `xama.png`, `troll.png`, `ogro.png`

@@ -32,6 +32,7 @@
     this.pending = [];
     this.fx = [];
     this.kills = 0;
+    this.killsBy = {};   // abates por tipo de invasor (bestiário)
     this.dmgBy = {};
     this.florins = 0;
     this.spawned = 0;
@@ -100,6 +101,7 @@
     if (e.hp <= 0) {
       e.dead = true;
       this.kills++;
+      this.killsBy[e.type] = (this.killsBy[e.type] || 0) + 1;
       const gain = e.reward * this.stats.florimMult;
       this.florins += gain;
       this.addFx({ kind: 'death', x: e.x, y: e.y, color: e.def.color, ttl: 0.5 });
@@ -411,6 +413,7 @@
     return {
       won: this.state === 'won',
       kills: this.kills,
+      killsBy: this.killsBy,
       total: this.totalEnemies,
       florins: Math.round(this.florins),
       towerPct: this.tower.hp / this.tower.maxHp,

@@ -44,7 +44,10 @@
       <div class="col">
         <button id="btn-play" class="btn primary big">⚔ Jogar</button>
         <button id="btn-tree" class="btn big">Evolução</button>
-        <button id="btn-help" class="btn">Como jogar</button>
+        <div class="row">
+          <button id="btn-bestiary" class="btn">📖 Bestiário</button>
+          <button id="btn-help" class="btn">Como jogar</button>
+        </div>
         <button id="btn-invite" class="btn">🎁 Indicar amigos</button>
         <button id="btn-account" class="btn">👤 <span id="acc-name">Convidado</span></button>
         <button id="btn-reset" class="btn danger small">Apagar progresso</button>
@@ -74,6 +77,24 @@
           <button id="acc-create" class="btn primary">Criar conta</button>
         </div>
         <div id="acc-msg" class="acc-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BESTIÁRIO -->
+  <div id="screen-bestiary" class="screen hidden">
+    <div class="panel wide tree-panel">
+      <div class="tree-head">
+        <button class="btn small js-back">◀ Voltar</button>
+        <h2>📖 Bestiário</h2>
+        <div class="tree-tools">
+          <button id="bes-all" class="btn small ad-btn hidden">🎁 Coletar tudo</button>
+          <div class="florins-big">💰 <span class="js-florins">0</span></div>
+        </div>
+      </div>
+      <div class="tree-body">
+        <div id="bes-grid" class="bes-grid"></div>
+        <div id="bes-detail" class="tree-detail bes-detail"></div>
       </div>
     </div>
   </div>
@@ -114,6 +135,7 @@
       <p><b>Heróis:</b> antes de cada nível, gaste <b>pontos de convocação</b> em guerreiros. Eles defendem a área ao redor da torre e renascem se morrerem.</p>
       <p><b>Poderes:</b> depois de desbloqueados na Evolução, podem ser comprados com pontos. Toque no botão do poder e depois no campo. Eles recarregam durante a partida.</p>
       <p><b>Florins:</b> cada invasor abatido dá Florins (mesmo em derrota). Vitórias dão bônus. Use-os na <b>Evolução</b>.</p>
+      <p><b>Bestiário:</b> cada herói desbloqueado e cada invasor derrotado pela primeira vez entra no 📖 Bestiário e dá uma recompensa em Florins.</p>
       <p><b>Fases e chefões:</b> cada fase tem 3 níveis; o último termina com um <b>chefão</b>. Se a torre cair, você pode assistir a um anúncio para reviver (1 vez por partida). Na tela de resultado também dá para assistir e <b>dobrar os Florins</b>.</p>
       <button class="btn primary js-back">Voltar</button>
     </div>
@@ -208,6 +230,7 @@
   <script src="js/server-config.js"></script>
   <script src="js/cloud.js"></script>
   <script src="js/invite.js"></script>
+  <script src="js/bestiary.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

@@ -95,6 +95,30 @@
                 range: 12,  armor: 10, reward: 130, threat: 0, radius: 38, boss: true, bossFrom: 37 },
     },
 
+    // ---------------- BESTIÁRIO ----------------
+    // Recompensa (Florins) coletada uma única vez quando o herói é desbloqueado ou o invasor é
+    // derrotado pela primeira vez. Total: 800 (heróis) + 2.080 (invasores). Ver docs/BESTIARIO.md.
+    bestiary: {
+      heroes: {
+        barbaro:  { reward: 50,  desc: 'Guerreiro das montanhas do norte. Segura a linha de frente com o machado e não recua.' },
+        arqueiro: { reward: 100, desc: 'Caçador da floresta. Acerta um alvo de cada vez, de longe, antes que chegue à torre.' },
+        anao:     { reward: 150, desc: 'Forjado nas minas. A armadura pesada aguenta golpes e o martelo atinge vários inimigos.' },
+        elfo:     { reward: 200, desc: 'Arqueiro veloz de alcance enorme. Dispara sem parar, mas sofre contra armaduras.' },
+        mago:     { reward: 300, desc: 'Estudioso das artes arcanas. Bolas de fogo em área, mas é frágil de perto.' },
+      },
+      enemies: {
+        goblin:       { reward: 30,  desc: 'Pequeno, numeroso e covarde. Sozinho não assusta; em bando derruba muralhas.' },
+        lobo:         { reward: 40,  desc: 'Corre mais rápido que todos. Chega à torre antes que você perceba.' },
+        orc:          { reward: 60,  desc: 'Soldado de armadura de ferro. Golpes fracos mal arranham.' },
+        xama:         { reward: 80,  desc: 'Feiticeiro morto-vivo. Ataca a torre de longe com chamas roxas.' },
+        troll:        { reward: 120, desc: 'Gigante lento e resistente. Cada golpe do porrete abala as pedras da torre.' },
+        chefe_goblin: { reward: 150, desc: 'Chefão. O mais esperto dos goblins se coroou rei e comanda o bando.' },
+        chefe_orc:    { reward: 300, desc: 'Chefão. Veterano de cem batalhas, lidera as legiões orcs.' },
+        ogro:         { reward: 500, desc: 'Chefão. Armadura grossa: só golpes fortes e perfurantes o derrubam.' },
+        troll_anciao: { reward: 800, desc: 'Chefão. Tão velho quanto a própria torre. Dizem que já a derrubou uma vez.' },
+      },
+    },
+
     // ---------------- GERAÇÃO DE NÍVEIS ----------------
     levels: {
       baseThreat: 13,       // ameaça da 1ª onda do nível 1 (~13 goblins)
