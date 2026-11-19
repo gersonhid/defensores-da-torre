@@ -22,7 +22,7 @@
 
     // ---------------- TOQUE ----------------
     // A mira fica acima do dedo para não ser escondida por ele (em pixels da tela; 0 = sob o dedo).
-    input: { touchAimOffset: 80 },
+    input: { touchAimOffset: 45 },
 
     // ---------------- CÂMERA / PIXEL ART (só visual) ----------------
     // pixelHeight: altura da tela interna em pixels "gordos" (menor = pixels maiores).

@@ -16,7 +16,9 @@ O projeto Android **já está pronto** na pasta `android/`:
 
 1. Baixe em **https://developer.android.com/studio** e instale com as opções padrão.
 2. Na primeira abertura, deixe ele baixar o **Android SDK** (assistente "Standard").
-3. O Android Studio já traz o Java certo (JDK 21) — **não precisa** mexer no Java 8 instalado.
+3. O Android Studio já traz o Java certo — **não precisa** mexer no Java 8 instalado.
+4. Se existir uma versão antiga do Android Studio (ex.: em `D:Program FilesAndroidAndroid Studio`, versão 4.2
+   de 2021), **desinstale** para não abrir a errada por engano.
 
 ## 2. Abrir o projeto
 
@@ -31,8 +33,11 @@ Ou no Android Studio: **File → Open** → escolha a pasta **`D:\ai\tower\andro
 Na primeira vez ele faz o **"Gradle Sync"** (baixa bibliotecas; pode levar alguns minutos).
 Espere a barra de progresso no rodapé terminar.
 
+> O projeto usa **Gradle 9.1**, compatível com o Java 25 que vem no Android Studio atual.
+> Se o Android Studio sugerir **"Upgrade Android Gradle Plugin"** (AGP 9), **recuse por enquanto**:
+> os plugins do Capacitor/AdMob ainda são feitos para o AGP 8.
 > Se aparecer erro de "Gradle JDK": **File → Settings → Build, Execution, Deployment → Build Tools →
-> Gradle → Gradle JDK** → escolha **"jbr-21"** (o Java do próprio Android Studio).
+> Gradle → Gradle JDK** → escolha **"jbr"** (o Java do próprio Android Studio).
 
 ## 3. Rodar no seu celular
 
@@ -55,6 +60,11 @@ O jogo abre no celular já instalado.
 > Se o anúncio não aparecer na primeira vez, espere alguns segundos e tente de novo — o primeiro
 > carregamento do AdMob pode demorar. Para ver erros, use **Logcat** no Android Studio (aba inferior)
 > e filtre por `anúncios` ou `Ads`.
+
+### Alternativa: instalar o APK sem o cabo
+Depois de compilar, o arquivo fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
+Copie para o celular (Drive, WhatsApp para você mesmo, cabo) e abra — o Android pede para permitir
+"instalar apps desta fonte". É uma versão de **teste** (não serve para a loja).
 
 ### Depois de mudar algo no jogo (pasta `www/`)
 ```bash
@@ -101,5 +111,6 @@ e clique em ▶ Run de novo.
 | "No fill" / sem anúncio com `test: false` antes de publicar | Normal: anúncios reais só aparecem bem depois do app publicado e vinculado |
 | Quer testar anúncios reais com segurança | AdMob → Configurações → **Dispositivos de teste** → adicione seu celular |
 | Mudou a pasta `www/` e o app não mudou | Faltou `npm run android:sync` |
-| Erro de Gradle/Java ao abrir | Ajustar Gradle JDK para `jbr-21` (passo 2) |
+| "Unsupported class file major version 69" | Gradle antigo com Java 25 — o projeto já usa Gradle 9.1; faça **File → Sync Project with Gradle Files** |
+| "SDK location not found" | **File → Project Structure → SDK Location** → apontar para `C:Users<você>AppDataLocalAndroidSdk` |
 | Formulário de consentimento (LGPD/Europa) | Configure em AdMob → **Privacidade e mensagens**; o app já chama o formulário quando exigido |
