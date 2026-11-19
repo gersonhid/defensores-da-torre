@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Convite — Defensores da Torre</title>
+  <meta name="theme-color" content="#1e2a1a">
+  <link rel="icon" href="icons/icon-192.png">
+  <!-- prévia do link no WhatsApp/Telegram/Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Defensores da Torre — você foi convidado!">
+  <meta property="og:description" content="Defenda a torre contra goblins, orcs e chefões. Entre pelo convite e ganhe Florins de bônus.">
+  <meta property="og:image" content="https://gersonhid.github.io/defensores-da-torre/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <style>
+    @font-face { font-family: 'Pixelify Sans'; src: url(fonts/PixelifySans.woff2) format('woff2'); font-weight: 400 700; font-display: swap; }
+    :root { --bg: #1e2a1a; --panel: #2b2118; --border: #c9a15a; --border-dark: #5e4423; --text: #f3e9d2; --muted: #bfae8a; --gold: #ffd32a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+      background: var(--bg); color: var(--text); font-family: "Pixelify Sans", "Courier New", monospace; }
+    main { width: 100%; max-width: 420px; background: var(--panel); padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 12px;
+      border: 3px solid var(--border); box-shadow: 0 0 0 3px var(--border-dark), 6px 6px 0 3px rgba(0,0,0,.45); }
+    img { width: 96px; height: 96px; margin: 0 auto; image-rendering: pixelated; }
+    h1 { margin: 0; color: var(--gold); font-size: 28px; text-shadow: 2px 2px 0 #6b3b10; }
+    p { margin: 0; line-height: 1.4; }
+    .code { font-size: 15px; color: var(--muted); }
+    .code b { color: var(--gold); font-size: 22px; letter-spacing: 3px; }
+    a.btn { display: block; padding: 12px; font-size: 18px; font-weight: 700; color: var(--text); text-decoration: none; background: #3d8b3d;
+      box-shadow: inset -3px -3px 0 rgba(0,0,0,.35), inset 3px 3px 0 rgba(255,255,255,.15), 0 0 0 2px #1a120a; }
+    a.btn.alt { background: #5a4630; font-weight: 400; font-size: 16px; }
+    .hidden { display: none; }
+    small { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <img src="icons/icon-192.png" alt="">
+  <h1>Defensores da Torre</h1>
+  <p>Um amigo te convidou para defender a torre! Crie uma conta e vença o <b>nível 3</b> para ganhar <b>💰 Florins de bônus</b>.</p>
+  <p id="code" class="code hidden">Código do convite: <b id="code-v"></b></p>
+  <a id="go-play" class="btn hidden" href="#">▶ Baixar na Google Play</a>
+  <a id="go-web" class="btn" href="./">⚔ Jogar agora</a>
+  <small id="wait">Abrindo o jogo...</small>
+  <small id="hint" class="hidden">Se o convite não for reconhecido, abra o jogo em <b>🎁 Indicar amigos</b> e digite o código acima.</small>
+</main>
+<script>
+  // Quando o app estiver publicado na Google Play, mude para true:
+  // no Android o convite passa a abrir a loja (com o código), nos outros aparelhos continua abrindo o jogo no navegador.
+  var PLAY_PUBLICADO = false;
+  var PACOTE = 'com.towerdefence.run';
+
+  var ref = (new URLSearchParams(location.search).get('ref') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  var android = /Android/i.test(navigator.userAgent);
+  var play = 'https://play.google.com/store/apps/details?id=' + PACOTE + (ref ? '&referrer=' + encodeURIComponent('ref=' + ref) : '');
+  var web = './' + (ref ? '?ref=' + encodeURIComponent(ref) : '');
+
+  document.getElementById('go-web').href = web;
+  document.getElementById('go-play').href = play;
+  if (ref) {
+    document.getElementById('code-v').textContent = ref;
+    document.getElementById('code').classList.remove('hidden');
+    document.getElementById('hint').classList.remove('hidden');
+  }
+  if (PLAY_PUBLICADO) {
+    document.getElementById('go-play').classList.remove('hidden');
+    document.getElementById('go-web').classList.add('alt');
+  }
+  var dest = PLAY_PUBLICADO && android ? play : web;
+  setTimeout(function () {
+    document.getElementById('wait').classList.add('hidden');
+    location.href = dest;
+  }, 1500);
+</script>
+</body>
+</html>

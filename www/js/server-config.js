@@ -7,4 +7,6 @@
 window.TD_SERVER_CONFIG = {
   api: 'https://api-production-5f9a2aef.up.railway.app',
   googleClientId: null,
+  // endereço público do jogo; o link de convite é siteUrl + 'convite.html?ref=CODIGO'
+  siteUrl: 'https://gersonhid.github.io/defensores-da-torre/',
 };

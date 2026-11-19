@@ -102,6 +102,70 @@ const ok = (name) => { passed++; console.log('  ✔ ' + name); };
     assert.strictEqual(evil.headers.get('access-control-allow-origin'), null);
     ok('CORS só para os endereços do jogo');
 
+    // ---------- indicação ----------
+    const ana = await call('POST', '/api/register', { username: 'ana', password: 'segredo1', device: { deviceId: 'aparelho-ana' } });
+    const st0 = await call('GET', '/api/indicacao', null, ana.json.token);
+    assert.strictEqual(st0.status, 200); assert.match(st0.json.codigo, /^[A-Z2-9]{6}$/);
+    assert.strictEqual((await call('GET', '/api/indicacao', null, ana.json.token)).json.codigo, st0.json.codigo);
+    ok('gera código de convite fixo por jogador');
+    const code = st0.json.codigo;
+
+    assert.strictEqual((await call('POST', '/api/indicacao/usar', { codigo: code }, ana.json.token)).status, 400);
+    ok('não aceita o próprio código');
+
+    const mesmo = await call('POST', '/api/guest', { device: { deviceId: 'aparelho-ana' } });
+    assert.strictEqual((await call('POST', '/api/indicacao/usar', { codigo: code }, mesmo.json.token)).status, 400);
+    ok('não aceita convite no mesmo aparelho');
+
+    const velho = await call('POST', '/api/guest', { device: { deviceId: 'aparelho-velho' } });
+    await db.query(`UPDATE users SET created_at = now() - interval '30 days' WHERE id = $1`, [velho.json.user.id]);
+    assert.strictEqual((await call('POST', '/api/indicacao/usar', { codigo: code }, velho.json.token)).status, 400);
+    ok('convite só vale para jogador novo');
+
+    assert.strictEqual((await call('POST', '/api/indicacao/usar', { codigo: 'ZZZZZZ' }, mesmo.json.token)).status, 404);
+    ok('código inexistente');
+
+    // amigo: entra como convidado, usa o código (minúsculo), cria conta, vence o nível 3
+    const bia = await call('POST', '/api/guest', { device: { deviceId: 'aparelho-bia' } });
+    const use = await call('POST', '/api/indicacao/usar', { codigo: code.toLowerCase() }, bia.json.token);
+    assert.strictEqual(use.status, 200); assert.strictEqual(use.json.convite, 'pendente'); assert.strictEqual(use.json.podeUsarCodigo, false);
+    assert.strictEqual((await call('POST', '/api/indicacao/usar', { codigo: code }, bia.json.token)).status, 409);
+    ok('amigo usa o código uma única vez');
+
+    assert.strictEqual((await call('POST', '/api/indicacao/marco', { nivel: 3 }, bia.json.token)).status, 403);
+    ok('convidado precisa criar conta para concluir');
+    const biaAcc = await call('POST', '/api/register', { username: 'bia', password: 'segredo1' }, bia.json.token);
+    assert.strictEqual((await call('POST', '/api/indicacao/marco', { nivel: 2 }, biaAcc.json.token)).status, 400);
+    const mk = await call('POST', '/api/indicacao/marco', { nivel: 3 }, biaAcc.json.token);
+    assert.strictEqual(mk.status, 200); assert.strictEqual(mk.json.convite, 'concluida'); assert.strictEqual(mk.json.aCobrar, 300);
+    ok('convite concluído ao vencer o nível 3 com conta');
+
+    const rb = await call('POST', '/api/indicacao/resgatar', null, biaAcc.json.token);
+    assert.strictEqual(rb.json.florins, 300); assert.strictEqual(rb.json.convidado, true);
+    assert.strictEqual((await call('POST', '/api/indicacao/resgatar', null, biaAcc.json.token)).json.florins, 0);
+    const sa = await call('GET', '/api/indicacao', null, ana.json.token);
+    assert.strictEqual(sa.json.convidados, 1); assert.strictEqual(sa.json.concluidas, 1); assert.strictEqual(sa.json.aCobrar, 500);
+    const ra = await call('POST', '/api/indicacao/resgatar', null, ana.json.token);
+    assert.strictEqual(ra.json.florins, 500); assert.strictEqual(ra.json.amigos, 1);
+    assert.strictEqual((await call('POST', '/api/indicacao/resgatar', null, ana.json.token)).json.florins, 0);
+    ok('prêmios entregues uma única vez (500 para quem indicou, 300 para o amigo)');
+
+    // limite de amigos premiados
+    for (let i = 0; i < 10; i++) {
+      const g = await call('POST', '/api/guest', { device: { deviceId: 'amigo-' + i } });
+      // cada amigo vem de um IP diferente (o "usar" tem limite de tentativas por IP)
+      await call('POST', '/api/indicacao/usar', { codigo: code }, g.json.token, { 'x-forwarded-for': '10.0.0.' + i });
+      // vira conta direto no banco (o cadastro pela API tem limite de tentativas por IP)
+      await db.query(`UPDATE users SET kind = 'usuario' WHERE id = $1`, [g.json.user.id]);
+      await call('POST', '/api/indicacao/marco', { nivel: 5 }, g.json.token);
+    }
+    const lim = await call('GET', '/api/indicacao', null, ana.json.token);
+    assert.strictEqual(lim.json.concluidas, 11); assert.strictEqual(lim.json.premiadas, 10); assert.strictEqual(lim.json.aCobrar, 9 * 500);
+    ok('limite de 10 amigos premiados para quem indica');
+    const resumo = await call('GET', '/api/admin/resumo', null, null, { 'x-admin-key': 'chave-teste' });
+    assert.strictEqual(resumo.json.indicacoes.concluidas, 11);
+    ok('resumo do admin mostra as indicações');
+
     console.log(`\n${passed} testes passaram.`);
   } catch (e) {
     console.error('\nFALHOU:', e);

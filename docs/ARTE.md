@@ -1,5 +1,9 @@
 # Arte — gerando imagens no Gemini
 
+> **Nome comercial do jogo: "Guardians of the Lost Tower".** Use esse nome no logo, ícone, imagem de
+> destaque da loja e tela de título. A arte deve combinar com o tema de uma **torre perdida/antiga**
+> (pedras gastas, musgo, ruínas, mistério) — vale ajustar os prompts abaixo nessa direção.
+
 O jogo já roda com **placeholders em pixel art** feitos no código. Cada imagem que você colocar em
 `www/assets/` substitui o placeholder correspondente automaticamente — dá para trocar aos poucos.
 

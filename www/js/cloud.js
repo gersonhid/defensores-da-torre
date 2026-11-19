@@ -9,10 +9,23 @@
  */
 (function (root) {
   'use strict';
-  const APP_VERSION = '0.4.0';
+  const APP_VERSION = '0.5.0';
   const CONF = root.TD_SERVER_CONFIG || {};
   const API = (CONF.api || '').replace(/\/+$/, '');
   const TOKEN_KEY = 'defensores_token_v1';
+  const DEVICE_KEY = 'defensores_aparelho_v1';
+
+  // identificador aleatório deste aparelho (sobrevive ao "sair da conta"); usado contra convites no mesmo aparelho
+  function deviceId() {
+    try {
+      let id = localStorage.getItem(DEVICE_KEY);
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        localStorage.setItem(DEVICE_KEY, id);
+      }
+      return id;
+    } catch (e) { return null; }
+  }
 
   const state = { enabled: !!API, ready: false, user: null, token: null };
   const listeners = [];
@@ -54,6 +67,7 @@
     const n = navigator;
     const info = {
       appVersion: APP_VERSION,
+      deviceId: deviceId(),
       userAgent: n.userAgent,
       language: n.language || null,
       languages: (n.languages || []).slice(0, 5),
@@ -179,12 +193,22 @@
     return true;
   }
 
+  // ---------- indicação de amigos (docs/INDICACAO.md) ----------
+  const referral = {
+    status: () => api('GET', '/api/indicacao'),
+    use: (codigo) => api('POST', '/api/indicacao/usar', { codigo }),
+    milestone: (nivel) => api('POST', '/api/indicacao/marco', { nivel }),
+    claim: () => api('POST', '/api/indicacao/resgatar'),
+  };
+
   root.TD_CLOUD = {
+    referral,
     APP_VERSION,
     init, status, onChange: (fn) => { listeners.push(fn); },
     createAccount, login, loginGoogleCredential, logout, renderGoogleButton,
     sync, pushSave, pushSaveNow,
     get ready() { return state.ready; },
+    get user() { return state.user; },
     get googleEnabled() { return !!CONF.googleClientId && state.enabled; },
   };
 })(typeof self !== 'undefined' ? self : this);

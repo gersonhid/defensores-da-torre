@@ -28,6 +28,7 @@ www/                 o jogo (HTML5 Canvas, sem dependências, sem build)
   js/ads.js          anúncios recompensados (simulado / H5 / AdMob)
   js/ads-config.js   escolha do provedor de anúncios
   js/cloud.js        contas e progresso na nuvem (cliente da API em server/)
+  js/invite.js       indicação de amigos: compartilhar link, código de convite
   js/server-config.js  endereço da API e do login Google (null = só local)
   js/main.js         telas, toque, salvamento
   assets/            imagens (ver docs/ARTE.md)
@@ -37,6 +38,8 @@ docs/BALANCEAMENTO.md  metas, fórmulas, resultados e como ajustar
 docs/ARTE.md           prompts do Gemini e especificação das imagens
 docs/ANDROID.md         compilar o app Android (Capacitor + AdMob) e publicar na Play Store
 docs/ANUNCIOS.md       anúncios recompensados, fases/chefões e provedores (AdMob / H5)
+docs/PENDENCIAS.md     ★ checklist do que falta para publicar na Play Store
+docs/INDICACAO.md      indicação de amigos: como funciona, regras, prêmios e testes
 docs/CONTAS.md         contas, progresso na nuvem e dados dos jogadores — servidor no Railway
 server/                API Node.js + PostgreSQL (contas, progresso, registro de aparelhos)
 capacitor.config.json  empacotamento Android

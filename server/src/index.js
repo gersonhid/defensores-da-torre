@@ -8,6 +8,10 @@
  *   POST /api/google     entra com Google (ID token do botão do Google)          [token de convidado opcional]
  *   GET  /api/save       baixa o progresso                                       [token de conta]
  *   PUT  /api/save       envia o progresso                                       [token de conta]
+ *   GET  /api/indicacao            código de convite, amigos indicados, prêmios a receber [token]
+ *   POST /api/indicacao/usar       amigo informa o código de quem o convidou              [token]
+ *   POST /api/indicacao/marco      amigo venceu o nível do marco → convite concluído      [token de conta]
+ *   POST /api/indicacao/resgatar   entrega os Florins dos convites concluídos             [token]
  *   GET  /api/admin/resumo                 números gerais                     [cabeçalho x-admin-key]
  *   GET  /api/admin/usuarios?formato=csv   lista de jogadores                 [cabeçalho x-admin-key]
  *   GET  /api/health
@@ -23,6 +27,17 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS ||
   'https://gersonhid.github.io,http://localhost:8080,http://127.0.0.1:8080,http://127.0.0.1:8765,https://localhost,capacitor://localhost')
   .split(',').map((s) => s.trim()).filter(Boolean);
 const USER_RE = /^[a-z0-9_]{3,16}$/;
+
+// indicação de amigos (docs/INDICACAO.md)
+const REF = {
+  rewardReferrer: 500,   // Florins para quem indicou
+  rewardFriend: 300,     // Florins para o amigo
+  maxRewarded: 10,       // quantos amigos dão prêmio a quem indicou
+  milestone: 3,          // o amigo precisa vencer este nível (1º chefão)
+  newPlayerDays: 7,      // o código só vale para quem começou a jogar há até N dias
+};
+const REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O, 1/I
+const REF_RE = /^[A-Z0-9]{4,12}$/;
 
 // ---------- utilidades ----------
 function send(res, status, body, headers) {
@@ -63,7 +78,7 @@ setInterval(() => { const now = Date.now(); for (const [k, v] of hits) if (!v.so
 
 // guarda só campos conhecidos do aparelho (evita lixo/abuso)
 const DEVICE_KEYS = ['appVersion', 'userAgent', 'language', 'languages', 'timezone', 'screen', 'viewport', 'cpuCores', 'memoryGB',
-  'touchPoints', 'connection', 'installedApp', 'model', 'os', 'osVersion', 'mobile', 'browser'];
+  'touchPoints', 'connection', 'installedApp', 'model', 'os', 'osVersion', 'mobile', 'browser', 'deviceId'];
 function cleanDevice(d) {
   if (!d || typeof d !== 'object') return null;
   const out = {};
@@ -109,6 +124,49 @@ function validPassword(p) {
 function score(save) {
   const ranks = Object.values(save.ranks || {}).reduce((a, b) => a + (+b || 0), 0);
   return (save.unlockedLevel || 1) * 100000 + ranks * 100 + Math.min(99, Math.floor((save.florins || 0) / 1000));
+}
+
+// ---------- indicação ----------
+async function ensureRefCode(u) {
+  if (u.ref_code) return u.ref_code;
+  for (let i = 0; i < 8; i++) {
+    let code = '';
+    for (let j = 0; j < 6; j++) code += REF_ALPHABET[Math.floor(Math.random() * REF_ALPHABET.length)];
+    try {
+      const r = await db.query('UPDATE users SET ref_code = $2 WHERE id = $1 AND ref_code IS NULL RETURNING ref_code', [u.id, code]);
+      if (r.rows.length) return r.rows[0].ref_code;
+      return (await db.query('SELECT ref_code FROM users WHERE id = $1', [u.id])).rows[0].ref_code; // outra requisição criou antes
+    } catch (e) {
+      if (String(e.code) !== '23505') throw e; // código repetido: tenta outro
+    }
+  }
+  throw httpError(500, 'Não foi possível gerar o código.');
+}
+
+async function referralStatus(u) {
+  const code = await ensureRefCode(u);
+  const mine = (await db.query(`SELECT
+      count(*)::int AS convidados,
+      count(*) FILTER (WHERE status = 'concluida')::int AS concluidas,
+      count(*) FILTER (WHERE referrer_reward > 0)::int AS premiadas,
+      COALESCE(sum(referrer_reward) FILTER (WHERE status = 'concluida' AND NOT referrer_claimed), 0)::int AS a_cobrar
+    FROM referrals WHERE referrer_id = $1`, [u.id])).rows[0];
+  const asFriend = (await db.query('SELECT status, referred_reward, referred_claimed FROM referrals WHERE referred_id = $1', [u.id])).rows[0];
+  const friendDue = asFriend && asFriend.status === 'concluida' && !asFriend.referred_claimed ? asFriend.referred_reward : 0;
+  const isNew = Date.now() - new Date(u.created_at).getTime() < REF.newPlayerDays * 86400e3;
+  return {
+    codigo: code,
+    convidados: mine.convidados,
+    concluidas: mine.concluidas,
+    premiadas: mine.premiadas,
+    aCobrar: mine.a_cobrar + friendDue,
+    convite: asFriend ? asFriend.status : null,         // null | pendente | concluida (quando eu fui convidado)
+    podeUsarCodigo: !asFriend && isNew,
+    premioIndicador: REF.rewardReferrer,
+    premioAmigo: REF.rewardFriend,
+    limite: REF.maxRewarded,
+    marco: REF.milestone,
+  };
 }
 
 // ---------- rotas ----------
@@ -208,6 +266,58 @@ const routes = {
     return { ok: true };
   },
 
+  // ---------- indicação ----------
+  'GET /api/indicacao': async (req) => referralStatus(await userFromToken(req, true)),
+
+  'POST /api/indicacao/usar': async (req, body) => {
+    rateLimit(req, 10, 600e3);
+    const u = await userFromToken(req, true);
+    const code = String(body.codigo || '').trim().toUpperCase();
+    if (!REF_RE.test(code)) throw httpError(400, 'Código de convite inválido.');
+    const ref = (await db.query('SELECT * FROM users WHERE ref_code = $1', [code])).rows[0];
+    if (!ref || ref.merged_into) throw httpError(404, 'Código de convite não encontrado.');
+    if (ref.id === u.id) throw httpError(400, 'Esse é o seu próprio código.');
+    if (Date.now() - new Date(u.created_at).getTime() > REF.newPlayerDays * 86400e3) {
+      throw httpError(400, 'O convite vale só para quem começou a jogar há pouco tempo.');
+    }
+    // mesmo aparelho de quem convidou = não vale
+    const devId = u.device && u.device.deviceId;
+    if (devId) {
+      const same = await db.query(`SELECT 1 FROM sessions WHERE user_id = $1 AND device->>'deviceId' = $2 LIMIT 1`, [ref.id, devId]);
+      if (same.rows.length) throw httpError(400, 'O convite precisa ser usado em outro aparelho.');
+    }
+    try {
+      await db.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [ref.id, u.id]);
+    } catch (e) {
+      if (String(e.code) === '23505') throw httpError(409, 'Você já usou um código de convite.');
+      throw e;
+    }
+    return referralStatus(u);
+  },
+
+  'POST /api/indicacao/marco': async (req, body) => {
+    const u = await userFromToken(req, true);
+    const row = (await db.query(`SELECT * FROM referrals WHERE referred_id = $1`, [u.id])).rows[0];
+    if (!row || row.status !== 'pendente') return referralStatus(u);
+    if (u.kind === 'convidado') throw httpError(403, 'Crie uma conta para concluir o convite.');
+    if (!(+body.nivel >= REF.milestone)) throw httpError(400, `Vença o nível ${REF.milestone} para concluir o convite.`);
+    const done = (await db.query(`SELECT count(*)::int AS n FROM referrals WHERE referrer_id = $1 AND referrer_reward > 0`, [row.referrer_id])).rows[0].n;
+    const referrerReward = done < REF.maxRewarded ? REF.rewardReferrer : 0;
+    await db.query(`UPDATE referrals SET status = 'concluida', completed_at = now(), referrer_reward = $2, referred_reward = $3
+                    WHERE id = $1 AND status = 'pendente'`, [row.id, referrerReward, REF.rewardFriend]);
+    return referralStatus(u);
+  },
+
+  'POST /api/indicacao/resgatar': async (req) => {
+    const u = await userFromToken(req, true);
+    const a = await db.query(`UPDATE referrals SET referrer_claimed = true
+                              WHERE referrer_id = $1 AND status = 'concluida' AND NOT referrer_claimed RETURNING referrer_reward`, [u.id]);
+    const b = await db.query(`UPDATE referrals SET referred_claimed = true
+                              WHERE referred_id = $1 AND status = 'concluida' AND NOT referred_claimed RETURNING referred_reward`, [u.id]);
+    const florins = a.rows.reduce((s, r) => s + r.referrer_reward, 0) + b.rows.reduce((s, r) => s + r.referred_reward, 0);
+    return { florins, amigos: a.rows.filter((r) => r.referrer_reward > 0).length, convidado: b.rows.length > 0 };
+  },
+
   // ---------- administração ----------
   'GET /api/admin/resumo': async (req) => {
     requireAdmin(req);
@@ -226,6 +336,10 @@ const routes = {
                             FROM users WHERE merged_into IS NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 20`),
       versoes: await one(`SELECT COALESCE(app_version, '?') AS versao, count(*)::int AS total FROM users GROUP BY 1 ORDER BY 2 DESC LIMIT 10`),
       progresso: await one(`SELECT (data->>'unlockedLevel')::int AS nivel_liberado, count(*)::int AS jogadores FROM saves GROUP BY 1 ORDER BY 1`),
+      indicacoes: (await one(`SELECT count(*)::int AS total,
+          count(*) FILTER (WHERE status = 'concluida')::int AS concluidas,
+          count(DISTINCT referrer_id)::int AS indicadores
+        FROM referrals`))[0],
     };
   },
 

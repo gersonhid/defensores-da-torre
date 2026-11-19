@@ -61,6 +61,21 @@ async function migrate() {
      )`,
     `CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id, started_at DESC)`,
     `CREATE INDEX IF NOT EXISTS users_last_seen_idx ON users(last_seen DESC)`,
+    // indicação de amigos (docs/INDICACAO.md)
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code TEXT UNIQUE`,
+    `CREATE TABLE IF NOT EXISTS referrals (
+       id               BIGSERIAL PRIMARY KEY,
+       referrer_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,   -- quem indicou
+       referred_id      UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, -- amigo (só 1 convite por jogador)
+       status           TEXT NOT NULL DEFAULT 'pendente',                      -- pendente | concluida
+       created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+       completed_at     TIMESTAMPTZ,
+       referrer_reward  INTEGER NOT NULL DEFAULT 0,
+       referred_reward  INTEGER NOT NULL DEFAULT 0,
+       referrer_claimed BOOLEAN NOT NULL DEFAULT false,
+       referred_claimed BOOLEAN NOT NULL DEFAULT false
+     )`,
+    `CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON referrals(referrer_id)`,
   ];
   for (const s of steps) await impl.query(s);
 }

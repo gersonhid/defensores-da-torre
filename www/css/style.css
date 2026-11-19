@@ -196,3 +196,15 @@ p { margin: 0; line-height: 1.35; font-size: 15px; }
 .ad-body small { font-size: 13px; color: #888; }
 .ad-count { font-size: 16px; }
 .acc-google { min-height: 44px; }
+
+/* ---------- indicar amigos ---------- */
+.inv-code { font-size: 18px; }
+.inv-code b { color: var(--gold); font-size: 26px; letter-spacing: 3px; user-select: text; -webkit-user-select: text; }
+.inv-stats { font-size: 14px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.inv-stats .ok { color: #7bd36b; }
+.btn.whats { background: #1f8f4e; font-weight: 700; }
+.row > .inv-input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 2px; }
+.row > .inv-input + .btn { flex: 0 0 auto; }
+.toast { position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 60;
+  max-width: min(520px, 90vw); background: #2b2118; color: var(--text); padding: 10px 16px; font-size: 16px; text-align: center;
+  border: 3px solid var(--gold); box-shadow: 0 0 0 3px var(--border-dark), 4px 4px 0 3px rgba(0,0,0,.5); pointer-events: none; }

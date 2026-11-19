@@ -48,7 +48,7 @@
   window.addEventListener('resize', () => renderer.resize());
 
   // ---------- navegação ----------
-  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account', 'revive'];
+  const SCREENS = ['menu', 'help', 'prep', 'tree', 'pause', 'result', 'account', 'revive', 'invite'];
   function show(name, push) {
     SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
     if (push) screenStack.push(name); else screenStack = [name];
@@ -57,6 +57,7 @@
     if (name === 'prep') renderPrep();
     if (name === 'tree') { treeSel = null; renderTree(); }
     if (name === 'account') renderAccount();
+    if (name === 'invite') renderInvite();
   }
 
   // ---------- CONTA ----------
@@ -100,6 +101,7 @@
         } else okText += ' Progresso deste aparelho salvo na nuvem.';
       }
       setAccMsg(okText, true);
+      referralTick();
     } catch (e) {
       setAccMsg(e.message || String(e));
     }
@@ -111,6 +113,123 @@
   $('acc-login').onclick = () => accAction(() => CLOUD.login($('acc-user').value, $('acc-pass').value), 'Bem-vindo de volta!');
   $('acc-logout').onclick = () => accAction(() => CLOUD.logout(), 'Você saiu. O progresso continua neste aparelho.');
   CLOUD.onChange(() => { $('acc-name').textContent = CLOUD.status().name; if (!$('screen-account').classList.contains('hidden')) renderAccount(); });
+  // ---------- INDICAR AMIGOS (docs/INDICACAO.md) ----------
+  const INV = window.TD_INVITE;
+  let refStatus = null;      // último status recebido do servidor
+  let refBusy = false;
+  let toastTimer = null;
+  function toast(text) {
+    const t = $('toast');
+    t.textContent = text;
+    t.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.add('hidden'), 5000);
+  }
+  const setInvMsg = (text, ok) => { $('inv-msg').textContent = text || ''; $('inv-msg').className = 'acc-msg' + (ok ? ' ok' : ''); };
+
+  // aplica o código pendente, conclui o convite ao vencer o marco e entrega os Florins ganhos
+  async function referralTick() {
+    if (!CLOUD.ready || refBusy) return;
+    refBusy = true;
+    try {
+      let fresh = false;     // status sempre atualizado (a conta pode ter mudado com login/sair)
+      const code = INV.pending();
+      if (code) {
+        try {
+          refStatus = await CLOUD.referral.use(code);
+          fresh = true;
+          INV.clearPending();
+          toast(`🎁 Convite aceito! Crie uma conta e vença o nível ${refStatus.marco} para ganhar 💰 ${fmt(refStatus.premioAmigo)}.`);
+        } catch (e) {
+          // erro definitivo (código inválido, já usado...): descarta; sem internet/servidor: tenta depois
+          if (e.status >= 400 && e.status < 500 && e.status !== 429) { INV.clearPending(); console.warn('[convite]', e.message); }
+        }
+      }
+      if (!fresh) refStatus = await CLOUD.referral.status();
+      if (refStatus.convite === 'pendente' && CLOUD.status().mode === 'account' && save.unlockedLevel > refStatus.marco) {
+        refStatus = await CLOUD.referral.milestone(save.unlockedLevel - 1);
+      }
+      if (refStatus.aCobrar > 0) {
+        const r = await CLOUD.referral.claim();
+        if (r.florins > 0) {
+          save.florins += r.florins;
+          save.stats = save.stats || {};
+          save.stats.referral_florins = (save.stats.referral_florins || 0) + r.florins;
+          persist();
+          document.querySelectorAll('.js-florins').forEach((el) => { el.textContent = fmt(save.florins); });
+          const who = r.amigos && r.convidado ? 'seus convites'
+            : r.amigos ? (r.amigos > 1 ? `${r.amigos} amigos completaram o convite` : 'um amigo completou o convite')
+              : 'convite concluído';
+          toast(`🎁 +💰 ${fmt(r.florins)} — ${who}!`);
+        }
+        refStatus = await CLOUD.referral.status();
+      }
+    } catch (e) {
+      console.warn('[convite]', e.message);
+    } finally {
+      refBusy = false;
+    }
+    if (!$('screen-invite').classList.contains('hidden')) renderInviteStatus();
+  }
+
+  function renderInviteStatus() {
+    const st = refStatus;
+    const online = CLOUD.ready && st;
+    $('inv-code-box').classList.toggle('hidden', !online);
+    $('inv-use').classList.toggle('hidden', !(online && st.podeUsarCodigo));
+    if (!online) {
+      $('inv-info').textContent = CLOUD.ready ? 'Carregando...' : 'Envie o link do jogo para seus amigos. Os prêmios por indicação precisam de internet.';
+      $('inv-stats').innerHTML = '';
+      return;
+    }
+    $('inv-code').textContent = st.codigo;
+    $('inv-info').innerHTML = `Envie seu link. Quando um amigo começar a jogar por ele, <b>criar uma conta</b> e vencer o
+      <b>nível ${st.marco}</b> (primeiro chefão), você ganha <b>💰 ${fmt(st.premioIndicador)}</b> e ele ganha <b>💰 ${fmt(st.premioAmigo)}</b>.
+      Vale para até ${st.limite} amigos.`;
+    const lines = [`Amigos que entraram pelo seu link: <b>${st.convidados}</b>`,
+      `Completaram o convite: <b>${st.concluidas}</b> · premiados ${st.premiadas}/${st.limite}`];
+    if (st.convite === 'pendente') {
+      lines.push(CLOUD.status().mode === 'account'
+        ? `Você entrou por convite: vença o nível ${st.marco} para ganhar 💰 ${fmt(st.premioAmigo)}.`
+        : `Você entrou por convite: <b>crie uma conta</b> (👤 no menu) e vença o nível ${st.marco} para ganhar 💰 ${fmt(st.premioAmigo)}.`);
+    }
+    if (st.convite === 'concluida') lines.push('<span class="ok">✔ Seu convite de entrada foi concluído.</span>');
+    $('inv-stats').innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
+  }
+
+  function renderInvite() {
+    setInvMsg('');
+    renderInviteStatus();
+    if (CLOUD.ready) referralTick();
+  }
+  const myCode = () => (CLOUD.ready && refStatus ? refStatus.codigo : null);
+  $('btn-invite').onclick = () => show('invite', true);
+  $('inv-share').onclick = async () => {
+    const r = await INV.share(myCode());
+    if (r === 'copiado') setInvMsg('Link copiado! Cole numa conversa para enviar.', true);
+    else if (r === 'falhou') setInvMsg('Não foi possível compartilhar. Use "Copiar link".');
+  };
+  $('inv-whats').onclick = () => INV.whatsapp(myCode());
+  $('inv-copy').onclick = async () => {
+    const ok = await INV.copy(myCode());
+    setInvMsg(ok ? 'Link copiado!' : 'Não foi possível copiar.', ok);
+  };
+  $('inv-apply').onclick = async () => {
+    const code = $('inv-input').value.trim();
+    if (!code) return;
+    $('inv-apply').disabled = true;
+    try {
+      refStatus = await CLOUD.referral.use(code);
+      INV.clearPending();
+      $('inv-input').value = '';
+      setInvMsg('Convite aceito!', true);
+      renderInviteStatus();
+    } catch (e) {
+      setInvMsg(e.message);
+    }
+    $('inv-apply').disabled = false;
+  };
+
   function back() {
     screenStack.pop();
     const stack = screenStack.length ? screenStack.slice() : ['menu'];
@@ -543,6 +662,9 @@
       dbl.classList.add('hidden');
     };
     $('res-next').classList.toggle('hidden', !r.won);
+    $('res-invite').classList.toggle('hidden', !(r.won && P.isBossLevel(L)));
+    $('res-invite').onclick = () => show('invite', true);
+    if (r.won && refStatus && refStatus.convite === 'pendente') referralTick();
     $('res-next').onclick = () => { game = null; openPrep(L + 1); };
     $('res-retry').onclick = () => { game = null; openPrep(L); };
     $('res-tree').onclick = () => { game = null; selLevel = r.won ? L + 1 : L; show('menu'); show('tree', true); };
@@ -599,9 +721,10 @@
   ADS.init();
 
   // conecta à nuvem (registra o jogador); com login, puxa o progresso mais avançado
+  INV.captureFromInstall().then(() => CLOUD.ready && INV.pending() && referralTick());
   CLOUD.init().then(async (st) => {
     $('acc-name').textContent = st.name;
-    if (st.mode !== 'account') return;
+    if (st.mode !== 'account') { referralTick(); return; }
     try {
       const r = await CLOUD.sync(save);
       if (r.source === 'nuvem' && !game) {
@@ -612,5 +735,6 @@
         document.querySelectorAll('.js-florins').forEach((el) => { el.textContent = fmt(save.florins); });
       }
     } catch (e) { console.warn('[nuvem] sincronização falhou:', e.message); }
+    referralTick();
   });
 })();
