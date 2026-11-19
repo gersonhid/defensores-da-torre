@@ -148,7 +148,7 @@ Guia: [ANDROID.md](ANDROID.md), seção 4.
 - [ ] 🟢 Sons e música (o jogo ainda não tem áudio?) — conferir
 - [ ] 🟢 Tutorial / dicas nos primeiros níveis
 - [x] Indicação do jogo para amigos (compartilhar + código com prêmio) — ver [INDICACAO.md](INDICACAO.md)
-  - [ ] 🟡 **[Claude]** Publicar o servidor no Railway com as rotas de indicação (`cd server && npx @railway/cli up --service api --ci`)
+  - [x] Servidor no Railway e site publicados com a indicação (19/11/2026)
   - [ ] 🟡 **[Você]** Testar no celular: compartilhar, WhatsApp, copiar link e convite entre dois aparelhos
   - [ ] 🔴 **[Claude]** Ao publicar na Play Store: `PLAY_PUBLICADO = true` em `www/convite.html`
 - [ ] 🟢 Conquistas / estrelas por nível

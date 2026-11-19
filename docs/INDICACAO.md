@@ -105,8 +105,8 @@ aparelho). Alguém com conhecimento técnico conseguiria burlar — com prêmio 
 - [x] Página `convite.html` com prévia do link
 - [x] Android: plugin de compartilhar + leitura do referrer da Play Store (compilado com sucesso)
 - [x] Política de privacidade: linha sobre convites
-- [ ] **Publicar o servidor** no Railway (sem isso o jogo mostra só o link, sem código e sem prêmios)
-- [ ] Publicar o site (`git push`) para o `convite.html` ficar no ar
+- [x] Servidor publicado no Railway
+- [x] Site publicado (`convite.html` no ar)
 - [ ] Testar no celular: Compartilhar, WhatsApp, Copiar link
 - [ ] Testar entre dois aparelhos: A envia o link → B abre, cria conta, vence o nível 3 → os dois recebem
 - [ ] Ao publicar na Play Store: `PLAY_PUBLICADO = true` e testar a instalação pelo link
