@@ -122,7 +122,7 @@
   }
 
   // Estratégia de compra da cadeia de evolução: menor custo / peso.
-  const BRANCH_WEIGHT = { mira: 1.3, comando: 1.4, torre: 1.0, economia: 0.9, arcano: 1.0 };
+  const BRANCH_WEIGHT = { mira: 1.3, comando: 1.4, torre: 1.0, economia: 0.9, arcano: 1.0, taberna: 2.0 };
   function spendFlorins(P, save) {
     for (let guard = 0; guard < 200; guard++) {
       let best = null, bestScore = Infinity;

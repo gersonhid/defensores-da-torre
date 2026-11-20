@@ -14,7 +14,7 @@ você convocou** antes da partida.
 
 ## Regras
 
-* O **primeiro herói** chega aos **15 s** de partida; depois, **1 a cada 35 s**.
+* O **primeiro herói** chega aos **20 s** de partida; depois, **1 a cada 45 s**.
 * Começa com **1 herói da Taberna em campo por vez**. O relógio **só anda enquanto houver vaga**:
   quando o herói da Taberna morre, a contagem recomeça.
 * Herói da Taberna **não renasce** e **não gasta pontos de convocação**.
@@ -26,8 +26,8 @@ você convocou** antes da partida.
 
 | Lugar | O quê |
 |---|---|
-| Evolução | Ramo **🍺 Taberna**, saindo de **Vitalidade** (Comando) |
-| Preparação | Linha "🍺 Taberna: 1 herói a cada 35s (até 1) · 🪓 33% 🏹 67%" |
+| Evolução | Ramo **🍺 Taberna**, logo depois de **Convocar Arqueiro** (linha própria, embaixo da teia) |
+| Preparação | Linha "🍺 Taberna: 1 herói a cada 45s (até 1) · 🪓 33% 🏹 67%" |
 | Partida (topo) | **🍺 12s** (tempo até o próximo) ou **🍺 cheia** |
 | Partida (campo) | Uma caneca sobe da porta quando o herói chega; heróis da Taberna têm uma **🍺 sobre a cabeça** |
 | Resultado | "🍺 Heróis da Taberna: N" |
@@ -37,23 +37,27 @@ você convocou** antes da partida.
 
 | Nó | Efeito | Custo | Requer |
 |---|---|---|---|
-| **Taberna** | Desbloqueia | 1.200 | Vitalidade nível 2 |
-| **Rodada da Casa** (até 6) | -8% de tempo entre heróis por nível (35 s → ~18 s no máximo) | 220 (+45% por nível) | Taberna |
-| **Mais Mesas** (até 3) | +1 herói da Taberna em campo ao mesmo tempo (até 4) | 600 (+80% por nível) | Taberna |
+| **Taberna** | Desbloqueia | 300 | Convocar Arqueiro |
+| **Rodada da Casa** (até 6) | -8% de tempo entre heróis por nível (45 s → ~23 s no máximo) | 150 (+45% por nível) | Taberna |
+| **Mais Mesas** (até 3) | +1 herói da Taberna em campo ao mesmo tempo (até 4) | 500 (+80% por nível) | Taberna |
 
 ## Dificuldade (simulador, 50 níveis, 6 campanhas)
 
-O robô do simulador compra a Taberna, em média, no **nível 32**.
+Desde 19/11/2026 a Taberna vem **logo depois do Arqueiro** e custa 300. O bot do simulador passou a
+valorizar o ramo (`taberna: 2.0` em `www/js/bot.js`), como faria um jogador, e a compra em média no
+**nível 8**.
 
-| | Sem Taberna | Com Taberna |
-|---|---|---|
-| Tentativas — níveis normais | 1,35 | 1,27 |
-| Tentativas — chefões | 1,67 | 1,50 |
-| Tempo da campanha | 3,0 h | 2,8 h |
-| Campanhas travadas | 0/6 | 0/6 |
+| | Sem Taberna | Taberna no nível ~32 (versão anterior) | **Taberna cedo (atual)** |
+|---|---|---|---|
+| Tentativas — níveis normais | 1,35 | 1,27 | **1,20** |
+| Tentativas — chefões | 1,67 | 1,50 | **1,32** |
+| Tempo da campanha | 3,0 h | 2,8 h | **2,5 h** |
+| Campanhas travadas | 0/6 | 0/6 | 0/6 |
 
-Ajuda na segunda metade da campanha, como esperado de uma melhoria cara, sem quebrar a curva.
-Uma versão mais forte (2 heróis por vez, a cada 30 s) deu resultado parecido: 1,25 / 1,48 / 2,7 h.
+⚠️ Com a Taberna cedo o jogo ficou **mais fácil**, e os chefões ficaram abaixo da meta de 1,5–3
+tentativas na segunda metade. Comprada cedo e com intervalo de 35 s, eram 1,22 tentativas nos
+chefões; com 45 s, 1,32. Para devolver a dificuldade, use a página de balanceamento
+(`tools/balanceamento.html`): por exemplo, aumentar um pouco o **crescimento linear** dos invasores.
 
 ## Ajustes
 

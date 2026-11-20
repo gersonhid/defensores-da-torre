@@ -4,6 +4,30 @@
 > anúncios recompensados. Os números atuais (com e sem anúncios) estão em [ANUNCIOS.md](ANUNCIOS.md).
 > As tabelas abaixo descrevem as fórmulas base, que continuam valendo.
 
+## Página interativa (`tools/balanceamento.html`)
+
+Abra o arquivo no navegador (funciona offline, é um arquivo só). Ela usa **o mesmo código do jogo**,
+copiado de `www/js/` quando a página é gerada:
+
+```bash
+npm run balanceamento     # gera de novo a página (rode depois de mudar o config.js)
+```
+
+* **Parâmetros editáveis** à esquerda (invasores, economia, convocação, mira, Taberna, heróis e
+  invasores base). Os mudados ficam dourados. Embaixo há o texto **"Exportar mudanças"** para colar
+  na conversa e aplicar no jogo.
+* **Florins por nível × força:** barras com os Florins de cada nível (fases de 3 níveis no eixo
+  horizontal; chefões em laranja), Florins acumulados, e duas linhas em escala logarítmica:
+  **força dos invasores** (vida efetiva somada) e **força do time** (dano de heróis, mira, poderes
+  e Taberna durante o nível). As etiquetas 🔓 mostram quando cada desbloqueio é comprado.
+* **Folga** = força do time ÷ força dos invasores (< 0,9 difícil, 0,9–1,6 desafio, > 1,6 fácil).
+* **De onde vem a força do time:** dano por segundo empilhado por fonte.
+* **▶ Rodar simulador real:** joga a campanha com o bot e o motor do jogo, dentro da página, e
+  marca as tentativas por nível no gráfico de folga. É a validação de verdade do modelo.
+
+O modelo de força é uma aproximação rápida (calibrada com o simulador pela "eficiência" de 0,6):
+serve para comparar mudanças. Confirme sempre com o simulador real.
+
 Todos os números ficam em **`www/js/config.js`**. O simulador **`tools/simulate.js`** joga a campanha
 inteira com um bot que usa **o mesmo motor do jogo** (`www/js/engine.js`). Altere um número,
 rode a simulação e compare.

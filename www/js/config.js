@@ -51,7 +51,7 @@
     // sorteado na proporção dos heróis convocados (1 Bárbaro + 2 Arqueiros = 33% / 67%).
     // max = heróis da Taberna vivos ao mesmo tempo; o relógio só anda enquanto houver vaga.
     // Heróis da Taberna não renascem. Ver docs/TABERNA.md.
-    tavern: { unlocked: false, interval: 35, max: 1, firstDelay: 15 },
+    tavern: { unlocked: false, interval: 45, max: 1, firstDelay: 20 },
     // range = distância borda-a-borda. splash = raio de dano em área (70% nos secundários).
     heroes: {
       barbaro:  { name: 'Bárbaro',  icon: '🪓', color: '#c0392b', cost: 3, unlocked: true,
@@ -213,12 +213,13 @@
       { id: 'cmd_lideranca', branch: 'comando', name: 'Liderança', desc: '+6% dano de todos os heróis', pos: [5, 5],
         max: 10, cost: 180, growth: 1.42, req: [['cmd_estrategista', 4]], fx: [{ p: 'heroes.*.damage', m: 0.06 }] },
       // TABERNA
-      { id: 'tav_unlock', branch: 'taberna', name: 'Taberna', desc: 'Um herói extra entra na batalha de tempos em tempos (proporção dos convocados)', pos: [6, 6],
-        max: 1, cost: 1200, growth: 1, req: [['cmd_vitalidade', 2]], fx: [{ p: 'tavern.unlocked', set: true }] },
-      { id: 'tav_rodada', branch: 'taberna', name: 'Rodada da Casa', desc: '-8% tempo entre heróis da Taberna', pos: [7, 6],
-        max: 6, cost: 220, growth: 1.45, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.interval', m: -0.08 }] },
-      { id: 'tav_mesas', branch: 'taberna', name: 'Mais Mesas', desc: '+1 herói da Taberna ao mesmo tempo', pos: [7, 7],
-        max: 3, cost: 600, growth: 1.8, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.max', a: 1 }] },
+      // logo depois do Arqueiro (início do jogo); fica numa linha própria, abaixo da teia
+      { id: 'tav_unlock', branch: 'taberna', name: 'Taberna', desc: 'Um herói extra entra na batalha de tempos em tempos (proporção dos convocados)', pos: [2, 9],
+        max: 1, cost: 300, growth: 1, req: [['arq_unlock', 1]], fx: [{ p: 'tavern.unlocked', set: true }] },
+      { id: 'tav_rodada', branch: 'taberna', name: 'Rodada da Casa', desc: '-8% tempo entre heróis da Taberna', pos: [3, 9],
+        max: 6, cost: 150, growth: 1.45, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.interval', m: -0.08 }] },
+      { id: 'tav_mesas', branch: 'taberna', name: 'Mais Mesas', desc: '+1 herói da Taberna ao mesmo tempo', pos: [3, 10],
+        max: 3, cost: 500, growth: 1.8, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.max', a: 1 }] },
       // BÁRBARO
       { id: 'bar_forca', branch: 'barbaro', name: 'Força Bruta', desc: '+10% dano do Bárbaro', pos: [0, 4],
         max: 12, cost: 60, growth: 1.35, fx: [{ p: 'heroes.barbaro.damage', m: 0.1 }] },

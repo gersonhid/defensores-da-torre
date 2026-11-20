@@ -1,0 +1,1786 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balanceamento — Defensores da Torre</title>
+<style>
+  :root {
+    --bg: #17120d; --panel: #2b2118; --panel2: #3a2d20; --line: #5e4423; --text: #f3e9d2; --muted: #bfae8a;
+    --gold: #ffd32a; --enemy: #ff6b5a; --team: #7bd36b; --aim: #ffb347; --power: #8fa3ff; --tavern: #e1a32a; --hero: #7bd36b;
+    --bar: #c9a15a; --bar-boss: #e07b3a; --grid: rgba(255,255,255,.07);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+  header { padding: 14px 18px; border-bottom: 2px solid var(--line); display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; color: var(--gold); }
+  header small { color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 320px 1fr; gap: 0; min-height: calc(100vh - 56px); }
+  aside { background: var(--panel); border-right: 2px solid var(--line); padding: 10px 12px; overflow-y: auto; max-height: calc(100vh - 56px); position: sticky; top: 0; }
+  main { padding: 14px 18px; min-width: 0; }
+  details { border-bottom: 1px solid var(--line); padding: 4px 0 8px; }
+  summary { cursor: pointer; font-weight: 700; color: var(--gold); padding: 4px 0; }
+  .param { display: grid; grid-template-columns: 1fr 86px; gap: 6px; align-items: center; margin: 4px 0; }
+  .param label { font-size: 13px; }
+  .param label small { display: block; color: var(--muted); font-size: 11px; }
+  .param input { width: 100%; background: #1a120a; color: var(--text); border: 1px solid var(--line); padding: 4px 6px; font: inherit; text-align: right; }
+  .param input.changed { border-color: var(--gold); color: var(--gold); }
+  .btn { background: #5a4630; color: var(--text); border: 0; padding: 7px 12px; font: inherit; cursor: pointer; box-shadow: inset -2px -2px 0 rgba(0,0,0,.35); }
+  .btn.primary { background: #3d8b3d; font-weight: 700; }
+  .btn:disabled { opacity: .5; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .kpi { background: var(--panel); padding: 8px 10px; border: 1px solid var(--line); }
+  .kpi b { display: block; font-size: 20px; color: var(--gold); }
+  .kpi span { color: var(--muted); font-size: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; color: var(--gold); }
+  .card p.help { margin: 0 0 8px; color: var(--muted); font-size: 12.5px; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--muted); font-size: 11px; font-family: system-ui, sans-serif; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -2px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,.06); white-space: nowrap; }
+  th { color: var(--gold); position: sticky; top: 0; background: var(--panel); }
+  td:first-child, th:first-child { text-align: left; }
+  tr.boss td { background: rgba(224,123,58,.10); }
+  .tablewrap { max-height: 420px; overflow: auto; }
+  .tip { position: fixed; pointer-events: none; background: #0d0906; border: 1px solid var(--gold); padding: 6px 8px; font-size: 12px; display: none; z-index: 9; max-width: 280px; }
+  .good { color: var(--team); } .bad { color: var(--enemy); } .warn { color: var(--gold); }
+  textarea { width: 100%; min-height: 110px; background: #1a120a; color: var(--text); border: 1px solid var(--line); font: 12px ui-monospace, Consolas, monospace; }
+  .note { font-size: 12px; color: var(--muted); }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } aside { position: static; max-height: none; border-right: 0; border-bottom: 2px solid var(--line); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚖️ Balanceamento — Defensores da Torre</h1>
+  <small>Gerado em 19/11/2026, 23:25:40 a partir de <code>www/js/</code>. Mesma matemática do jogo. Edite os parâmetros à esquerda.</small>
+</header>
+<div class="wrap">
+  <aside>
+    <div class="row">
+      <button class="btn" id="reset">↺ Valores do jogo</button>
+    </div>
+    <div id="params"></div>
+    <details open>
+      <summary>Exportar mudanças</summary>
+      <p class="note">Copie e cole na conversa (ou em <code>www/js/config.js</code>) para aplicar no jogo.</p>
+      <textarea id="export" readonly></textarea>
+    </details>
+  </aside>
+  <main>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card">
+      <h2>Florins por nível × força</h2>
+      <p class="help">Barras: Florins ganhos em cada nível (abates + vitória), supondo vitória de primeira. Fases de 3 níveis no eixo horizontal; barras laranja = nível de chefão.
+        Linhas (eixo da direita, escala logarítmica): <b class="bad">força dos invasores</b> (vida efetiva somada) e <b class="good">força do time</b> (dano que heróis, mira, poderes e Taberna causam no nível). As etiquetas mostram quando cada desbloqueio é comprado.</p>
+      <svg id="chart1" viewBox="0 0 1000 420"></svg>
+      <div class="legend">
+        <span><i style="background:var(--bar)"></i>Florins no nível</span>
+        <span><i style="background:var(--bar-boss)"></i>Florins (chefão)</span>
+        <span><i style="background:var(--enemy)"></i>Força dos invasores</span>
+        <span><i style="background:var(--team)"></i>Força do time</span>
+        <span><i style="background:var(--gold);height:3px"></i>Florins acumulados (eixo da esquerda ÷ 10)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Folga (força do time ÷ força dos invasores)</h2>
+      <p class="help">Acima de 1 o time tem dano de sobra; abaixo de 1 os invasores chegam na torre. Faixas: <span class="bad">&lt; 0,9 difícil</span> · <span class="warn">0,9–1,6 desafio</span> · <span class="good">&gt; 1,6 fácil</span>.
+        Pontos azuis: tentativas médias no <b>simulador real</b> (botão abaixo) — eixo da direita.</p>
+      <svg id="chart2" viewBox="0 0 1000 260"></svg>
+      <div class="row">
+        <button class="btn primary" id="simrun">▶ Rodar simulador real</button>
+        <label>Campanhas <input id="simseeds" type="number" value="2" min="1" max="8" style="width:52px"></label>
+        <label>Perfil <select id="simprofile"><option value="casual">casual</option><option value="medio" selected>médio</option><option value="bom">bom</option></select></label>
+        <span class="note" id="simstatus">Joga a campanha com o bot e o motor do jogo (leva alguns segundos por campanha).</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>De onde vem a força do time</h2>
+      <p class="help">Composição do dano do time por nível (empilhado): heróis convocados, mira do jogador, poderes e heróis da Taberna.</p>
+      <svg id="chart3" viewBox="0 0 1000 240"></svg>
+      <div class="legend">
+        <span><i style="background:var(--hero)"></i>Heróis</span>
+        <span><i style="background:var(--aim)"></i>Mira</span>
+        <span><i style="background:var(--power)"></i>Poderes</span>
+        <span><i style="background:var(--tavern)"></i>Taberna</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Tabela por nível</h2>
+      <div class="tablewrap"><table id="table"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Como ler</h2>
+      <p class="help">
+        <b>Força dos invasores</b> = Σ vida × (chefão: ×vida de chefão) ÷ fator de armadura (golpes fracos rendem menos contra armadura; mínimo 25%).<br>
+        <b>Força do time</b> = dano por segundo de todas as fontes × duração do nível × <b>eficiência</b> (fração do dano que realmente acerta; 0,6 calibrado com o simulador).<br>
+        <b>Time e compras</b> = o mesmo do bot do simulador: monta o time com os pontos de convocação e gasta os Florins na Evolução pelo menor custo ÷ peso do ramo.<br>
+        O modelo é uma aproximação rápida para comparar mudanças. Para validar, use o <b>simulador real</b> (mesmo motor do jogo) ou <code>npm run sim</code>.
+      </p>
+    </div>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+
+<!-- código do jogo (copiado de www/js/ ao gerar esta página) -->
+<script>
+/* ===== www/js/config.js ===== */
+/*
+ * CONFIGURAÇÃO DE BALANCEAMENTO
+ * ------------------------------------------------------------
+ * TODOS os números do jogo ficam aqui. Altere e rode:
+ *     npm run sim
+ * para ver o efeito na curva de dificuldade (ver docs/BALANCEAMENTO.md).
+ *
+ * Unidades: distância em "unidades de chão" (mundo lógico 1120x1000, visto de cima),
+ * tempo em segundos. A perspectiva inclinada é só visual (ver `view` e js/camera.js).
+ * Arquivo UMD: funciona no navegador (window.TD_CONFIG) e no Node (require).
+ */
+(function (root, factory) {
+  const cfg = factory();
+  if (typeof module === 'object' && module.exports) module.exports = cfg;
+  else root.TD_CONFIG = cfg;
+})(typeof self !== 'undefined' ? self : this, function () {
+  return {
+    // Mapa mais "fundo" que largo: depois de inclinado ele preenche uma tela horizontal.
+    // Distância canto -> torre ≈ 750 (quase igual à versão retrato, preserva o balanceamento).
+    // spawnMargin: distância fora da borda onde os invasores surgem (vêm de qualquer ponto do contorno)
+    world: { width: 1120, height: 1000, spawnMargin: 30 },
+
+    // ---------------- TOQUE ----------------
+    // A mira fica acima do dedo para não ser escondida por ele (em pixels da tela; 0 = sob o dedo).
+    input: { touchAimOffset: 45 },
+
+    // ---------------- CÂMERA / PIXEL ART (só visual) ----------------
+    // pixelHeight: altura da tela interna em pixels "gordos" (menor = pixels maiores).
+    // top/bottom: linha da tela onde ficam a borda de trás e da frente do mapa.
+    // farScale: tamanho das coisas no fundo em relação à frente (1 = sem perspectiva).
+    // tilt: achatamento vertical do chão (1 = visto de cima, 0.5 = bem deitado).
+    view: { pixelHeight: 320, top: 58, bottom: 312, farScale: 0.68, tilt: 0.6, spriteScale: 1.7 },
+
+    // ---------------- TORRE ----------------
+    tower: { hp: 600, armor: 0, regen: 0, thorns: 0, radius: 48 },
+    // Tamanho da torre na TELA (unidades do mundo), usado para calcular a "zona cega" atrás dela:
+    // chão onde um personagem ficaria mais da metade escondido. Invasores contornam essa zona e
+    // os heróis não ficam parados nela. halfWidth = meia largura do corpo da torre; sideMargin = folga.
+    // Se a arte da torre mudar de proporção, ajuste aqui. Ver docs/VISIBILIDADE.md.
+    towerSprite: { height: 200, halfWidth: 48, sideMargin: 10 },
+
+    // ---------------- MIRA DO JOGADOR ----------------
+    // Pulso de dano em área a cada `interval` segundos na posição do dedo.
+    aim: { damage: 19, interval: 0.85, radius: 46, critChance: 0, critMult: 2.5, pierce: 0 },
+
+    // ---------------- HERÓIS ----------------
+    heroDefaults: { leash: 310, respawn: 14, homeRadius: 105, maxOnField: 16 },
+
+    // ---------------- TABERNA ----------------
+    // Desbloqueada na Evolução. De `interval` em `interval` segundos um herói extra entra na batalha,
+    // sorteado na proporção dos heróis convocados (1 Bárbaro + 2 Arqueiros = 33% / 67%).
+    // max = heróis da Taberna vivos ao mesmo tempo; o relógio só anda enquanto houver vaga.
+    // Heróis da Taberna não renascem. Ver docs/TABERNA.md.
+    tavern: { unlocked: false, interval: 45, max: 1, firstDelay: 20 },
+    // range = distância borda-a-borda. splash = raio de dano em área (70% nos secundários).
+    heroes: {
+      barbaro:  { name: 'Bárbaro',  icon: '🪓', color: '#c0392b', cost: 3, unlocked: true,
+                  hp: 240, damage: 22, interval: 1.0,  range: 8,   speed: 95,  armor: 2, splash: 0,
+                  radius: 16, lifesteal: 0 },
+      arqueiro: { name: 'Arqueiro', icon: '🏹', color: '#27ae60', cost: 3, unlocked: false,
+                  hp: 100, damage: 15, interval: 0.95, range: 230, speed: 85,  armor: 0, splash: 0,
+                  radius: 14, doubleShot: 0 },
+      anao:     { name: 'Anão',     icon: '⛏️', color: '#d35400', cost: 4, unlocked: false,
+                  hp: 340, damage: 30, interval: 1.5,  range: 8,   speed: 70,  armor: 6, splash: 45,
+                  radius: 17, stun: 0 },
+      elfo:     { name: 'Elfo',     icon: '🧝', color: '#16a085', cost: 5, unlocked: false,
+                  hp: 120, damage: 11, interval: 0.5,  range: 270, speed: 115, armor: 1, splash: 0,
+                  radius: 14, extraTargets: 0 },
+      mago:     { name: 'Mago',     icon: '🧙', color: '#8e44ad', cost: 6, unlocked: false,
+                  hp: 90,  damage: 30, interval: 1.9,  range: 220, speed: 80,  armor: 0, splash: 65,
+                  radius: 15, slowOnHit: 0 },
+    },
+
+    // ---------------- PODERES ----------------
+    // Comprados com pontos antes da partida (1 de cada). Durante a partida podem ser
+    // lançados sempre que a recarga (cooldown) terminar.
+    powers: {
+      raio:    { name: 'Raio',          icon: '⚡', cost: 5, cooldown: 12, unlocked: false,
+                 damage: 80, chains: 4, chainRange: 160, falloff: 0.85 },
+      gelo:    { name: 'Chuva de Gelo', icon: '❄️', cost: 6, cooldown: 18, unlocked: false,
+                 dps: 25, duration: 4, radius: 150, slow: 0.5 },
+      meteoro: { name: 'Meteoro',       icon: '☄️', cost: 8, cooldown: 22, unlocked: false,
+                 damage: 240, radius: 115, delay: 0.9 },
+    },
+
+    // ---------------- INVASORES (valores do nível 1) ----------------
+    // threat = custo no "orçamento de ameaça" da onda. weight = chance relativa de sorteio.
+    enemies: {
+      goblin: { name: 'Goblin', icon: '👺', color: '#6ab04c', hp: 30,  speed: 68,  damage: 5,  interval: 1.0,
+                range: 6,   armor: 0, reward: 2,  threat: 1,   radius: 13, unlockLevel: 1,  weight: 5 },
+      lobo:   { name: 'Lobo',   icon: '🐺', color: '#7f8c8d', hp: 24,  speed: 125, damage: 4,  interval: 0.8,
+                range: 6,   armor: 0, reward: 2,  threat: 1.2, radius: 13, unlockLevel: 3,  weight: 3 },
+      orc:    { name: 'Orc',    icon: '👹', color: '#2d6a4f', hp: 90,  speed: 50,  damage: 12, interval: 1.2,
+                range: 8,   armor: 3, reward: 5,  threat: 3,   radius: 17, unlockLevel: 4,  weight: 3 },
+      xama:   { name: 'Xamã',   icon: '💀', color: '#6c5ce7', hp: 55,  speed: 45,  damage: 10, interval: 2.0,
+                range: 190, armor: 0, reward: 6,  threat: 3.5, radius: 14, unlockLevel: 7,  weight: 2, ranged: true },
+      troll:  { name: 'Troll',  icon: '🦍', color: '#576574', hp: 320, speed: 32,  damage: 28, interval: 1.6,
+                range: 10,  armor: 6, reward: 16, threat: 10,  radius: 24, unlockLevel: 10, weight: 1.2 },
+      // CHEFÕES: aparecem no fim do último nível de cada fase. bossFrom = nível a partir do qual este é o chefe.
+      chefe_goblin: { name: 'Rei Goblin', icon: '👑', color: '#8bc34a', hp: 480, speed: 38, damage: 18, interval: 1.4,
+                range: 8,   armor: 2, reward: 35, threat: 0,   radius: 22, boss: true, bossFrom: 1 },
+      chefe_orc: { name: 'Senhor da Guerra Orc', icon: '👹', color: '#33691e', hp: 950, speed: 32, damage: 32, interval: 1.6,
+                range: 10,  armor: 5, reward: 60, threat: 0,   radius: 28, boss: true, bossFrom: 10 },
+      ogro:   { name: 'Ogro Chefe', icon: '👿', color: '#b33939', hp: 880, speed: 27, damage: 45, interval: 2.0,
+                range: 12,  armor: 8, reward: 90, threat: 0,   radius: 34, boss: true, bossFrom: 22 },
+      troll_anciao: { name: 'Troll Ancião', icon: '🗿', color: '#455a64', hp: 1250, speed: 24, damage: 60, interval: 2.2,
+                range: 12,  armor: 10, reward: 130, threat: 0, radius: 38, boss: true, bossFrom: 37 },
+    },
+
+    // ---------------- BESTIÁRIO ----------------
+    // Recompensa (Florins) coletada uma única vez quando o herói é desbloqueado ou o invasor é
+    // derrotado pela primeira vez, ou o poder é desbloqueado.
+    // Total: 800 (heróis) + 650 (poderes) + 2.080 (invasores) = 3.530. Ver docs/BESTIARIO.md.
+    bestiary: {
+      heroes: {
+        barbaro:  { reward: 50,  desc: 'Guerreiro das montanhas do norte. Segura a linha de frente com o machado e não recua.' },
+        arqueiro: { reward: 100, desc: 'Caçador da floresta. Acerta um alvo de cada vez, de longe, antes que chegue à torre.' },
+        anao:     { reward: 150, desc: 'Forjado nas minas. A armadura pesada aguenta golpes e o martelo atinge vários inimigos.' },
+        elfo:     { reward: 200, desc: 'Arqueiro veloz de alcance enorme. Dispara sem parar, mas sofre contra armaduras.' },
+        mago:     { reward: 300, desc: 'Estudioso das artes arcanas. Bolas de fogo em área, mas é frágil de perto.' },
+      },
+      powers: {
+        raio:    { reward: 150, desc: 'Um relâmpago cai do céu e salta de inimigo em inimigo, perdendo força a cada salto.' },
+        gelo:    { reward: 200, desc: 'Uma nevasca cobre a área: congela aos poucos e deixa os invasores lentos.' },
+        meteoro: { reward: 300, desc: 'Uma rocha em chamas cai do céu e esmaga tudo em volta. Demora um instante para chegar.' },
+      },
+      enemies: {
+        goblin:       { reward: 30,  desc: 'Pequeno, numeroso e covarde. Sozinho não assusta; em bando derruba muralhas.' },
+        lobo:         { reward: 40,  desc: 'Corre mais rápido que todos. Chega à torre antes que você perceba.' },
+        orc:          { reward: 60,  desc: 'Soldado de armadura de ferro. Golpes fracos mal arranham.' },
+        xama:         { reward: 80,  desc: 'Feiticeiro morto-vivo. Ataca a torre de longe com chamas roxas.' },
+        troll:        { reward: 120, desc: 'Gigante lento e resistente. Cada golpe do porrete abala as pedras da torre.' },
+        chefe_goblin: { reward: 150, desc: 'Chefão. O mais esperto dos goblins se coroou rei e comanda o bando.' },
+        chefe_orc:    { reward: 300, desc: 'Chefão. Veterano de cem batalhas, lidera as legiões orcs.' },
+        ogro:         { reward: 500, desc: 'Chefão. Armadura grossa: só golpes fortes e perfurantes o derrubam.' },
+        troll_anciao: { reward: 800, desc: 'Chefão. Tão velho quanto a própria torre. Dizem que já a derrubou uma vez.' },
+      },
+    },
+
+    // ---------------- GERAÇÃO DE NÍVEIS ----------------
+    levels: {
+      baseThreat: 13,       // ameaça da 1ª onda do nível 1 (~13 goblins)
+      // multiplicador de ameaça = 1 + threatLinear*(N-1) + threatQuad*(N-1)^2
+      threatLinear: 0.115, threatQuad: 0.0008,
+      waveThreatStep: 0.15, // cada onda dentro do nível é +15% maior
+      wavesBase: 3, wavesEvery: 4, wavesMax: 8,
+      hpGrowth: 1.025,      // +2.5% vida dos inimigos por nível
+      dmgGrowth: 1.03,      // +3% dano dos inimigos por nível
+      rewardGrowth: 1.0,    // +0% Florins por abate por nível
+      waveDuration: 14, waveGap: 5, firstDelay: 2,
+      bossEvery: 3,         // fase = 3 níveis; o último termina com um chefão
+      bossDelay: 3,         // segundos após a última onda até o chefão entrar
+      bossHpMult: 3.0,      // força dos chefões: multiplicador de vida
+      bossDmgMult: 2.5,     // força dos chefões: multiplicador de dano
+    },
+
+    // ---------------- ANÚNCIOS RECOMPENSADOS ----------------
+    // reviveHp: vida da torre ao reviver (fração). reviveStun: segundos que os inimigos ficam atordoados.
+    // doubleFlorins: o anúncio na tela de resultado repete os Florins ganhos na partida.
+    ads: { reviveHp: 0.5, reviveStun: 2.5, reviveRadius: 260, doubleFlorins: true },
+
+    // ---------------- PONTOS DE CONVOCAÇÃO ----------------
+    summon: { basePoints: 6, pointsPerLevel: 0.75 },
+
+    // ---------------- ECONOMIA (Florins) ----------------
+    economy: { victoryBase: 15, victoryPerLevel: 8, replayVictoryFactor: 0.3 },
+
+    // ---------------- CADEIA DE EVOLUÇÃO ----------------
+    // custo do próximo nível = round(cost * growth^rankAtual)
+    // fx: p = caminho do atributo ('*' = todos), m = multiplicador por nível (+0.1 = +10%),
+    //     a = soma por nível, set = valor fixo (desbloqueios)
+    branches: [
+      { id: 'torre',    name: 'Torre',    icon: '🏰' },
+      { id: 'mira',     name: 'Mira',     icon: '🎯' },
+      { id: 'comando',  name: 'Comando',  icon: '🚩' },
+      { id: 'barbaro',  name: 'Bárbaro',  icon: '🪓' },
+      { id: 'arqueiro', name: 'Arqueiro', icon: '🏹' },
+      { id: 'anao',     name: 'Anão',     icon: '⛏️' },
+      { id: 'elfo',     name: 'Elfo',     icon: '🧝' },
+      { id: 'mago',     name: 'Mago',     icon: '🧙' },
+      { id: 'arcano',   name: 'Arcano',   icon: '🔮' },
+      { id: 'economia', name: 'Tesouro',  icon: '💰' },
+      { id: 'taberna',  name: 'Taberna',  icon: '🍺' },
+    ],
+    tree: [
+      // TORRE
+      { id: 'torre_muralha', branch: 'torre', name: 'Muralhas Reforçadas', desc: '+12% vida da torre', pos: [2, 7],
+        max: 15, cost: 40, growth: 1.32, req: [['bar_vida', 1]], fx: [{ p: 'tower.hp', m: 0.12 }] },
+      { id: 'torre_pedreiros', branch: 'torre', name: 'Pedreiros', desc: '+2 vida/s de regeneração', pos: [3, 8],
+        max: 5, cost: 120, growth: 1.45, req: [['torre_muralha', 2]], fx: [{ p: 'tower.regen', a: 2 }] },
+      { id: 'torre_blindagem', branch: 'torre', name: 'Blindagem', desc: '+1 armadura (reduz cada golpe)', pos: [3, 7],
+        max: 5, cost: 150, growth: 1.5, req: [['torre_muralha', 3]], fx: [{ p: 'tower.armor', a: 1 }] },
+      { id: 'torre_espinhos', branch: 'torre', name: 'Espinhos', desc: 'Atacantes corpo-a-corpo sofrem +6 de dano', pos: [4, 7],
+        max: 5, cost: 220, growth: 1.5, req: [['torre_blindagem', 2]], fx: [{ p: 'tower.thorns', a: 6 }] },
+      // MIRA
+      { id: 'mira_pontaria', branch: 'mira', name: 'Pontaria', desc: '+12% dano da mira', pos: [1, 2],
+        max: 15, cost: 40, growth: 1.32, req: [['bar_forca', 1]], fx: [{ p: 'aim.damage', m: 0.12 }] },
+      { id: 'mira_gatilho', branch: 'mira', name: 'Gatilho Rápido', desc: '-5% intervalo entre disparos', pos: [2, 1],
+        max: 8, cost: 80, growth: 1.4, req: [['mira_pontaria', 2]], fx: [{ p: 'aim.interval', m: -0.05 }] },
+      { id: 'mira_ampla', branch: 'mira', name: 'Mira Ampla', desc: '+8% raio da mira', pos: [2, 2],
+        max: 6, cost: 100, growth: 1.45, req: [['mira_pontaria', 3]], fx: [{ p: 'aim.radius', m: 0.08 }] },
+      { id: 'mira_critico', branch: 'mira', name: 'Golpe Crítico', desc: '+6% chance de crítico (x2.5)', pos: [3, 0],
+        max: 6, cost: 200, growth: 1.45, req: [['mira_gatilho', 3]], fx: [{ p: 'aim.critChance', a: 0.06 }] },
+      { id: 'mira_perfurante', branch: 'mira', name: 'Disparo Perfurante', desc: 'Ignora 2 de armadura', pos: [4, 0],
+        max: 4, cost: 260, growth: 1.5, req: [['mira_critico', 2]], fx: [{ p: 'aim.pierce', a: 2 }] },
+      // COMANDO
+      { id: 'cmd_estrategista', branch: 'comando', name: 'Estrategista', desc: '+1 ponto de convocação', pos: [4, 6],
+        max: 10, cost: 90, growth: 1.38, req: [['arq_alcance', 1]], fx: [{ p: 'bonusPoints', a: 1 }] },
+      { id: 'cmd_clerigo', branch: 'comando', name: 'Clérigo', desc: '-10% tempo para heróis renascerem', pos: [5, 7],
+        max: 5, cost: 120, growth: 1.45, req: [['cmd_estrategista', 2]], fx: [{ p: 'respawn', m: -0.1 }] },
+      { id: 'cmd_vitalidade', branch: 'comando', name: 'Vitalidade', desc: '+6% vida de todos os heróis', pos: [5, 6],
+        max: 10, cost: 150, growth: 1.42, req: [['cmd_estrategista', 3]], fx: [{ p: 'heroes.*.hp', m: 0.06 }] },
+      { id: 'cmd_lideranca', branch: 'comando', name: 'Liderança', desc: '+6% dano de todos os heróis', pos: [5, 5],
+        max: 10, cost: 180, growth: 1.42, req: [['cmd_estrategista', 4]], fx: [{ p: 'heroes.*.damage', m: 0.06 }] },
+      // TABERNA
+      // logo depois do Arqueiro (início do jogo); fica numa linha própria, abaixo da teia
+      { id: 'tav_unlock', branch: 'taberna', name: 'Taberna', desc: 'Um herói extra entra na batalha de tempos em tempos (proporção dos convocados)', pos: [2, 9],
+        max: 1, cost: 300, growth: 1, req: [['arq_unlock', 1]], fx: [{ p: 'tavern.unlocked', set: true }] },
+      { id: 'tav_rodada', branch: 'taberna', name: 'Rodada da Casa', desc: '-8% tempo entre heróis da Taberna', pos: [3, 9],
+        max: 6, cost: 150, growth: 1.45, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.interval', m: -0.08 }] },
+      { id: 'tav_mesas', branch: 'taberna', name: 'Mais Mesas', desc: '+1 herói da Taberna ao mesmo tempo', pos: [3, 10],
+        max: 3, cost: 500, growth: 1.8, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.max', a: 1 }] },
+      // BÁRBARO
+      { id: 'bar_forca', branch: 'barbaro', name: 'Força Bruta', desc: '+10% dano do Bárbaro', pos: [0, 4],
+        max: 12, cost: 60, growth: 1.35, fx: [{ p: 'heroes.barbaro.damage', m: 0.1 }] },
+      { id: 'bar_vida', branch: 'barbaro', name: 'Pele Grossa', desc: '+10% vida do Bárbaro', pos: [1, 5],
+        max: 12, cost: 60, growth: 1.35, req: [['bar_forca', 1]], fx: [{ p: 'heroes.barbaro.hp', m: 0.1 }] },
+      { id: 'bar_furia', branch: 'barbaro', name: 'Fúria Sangrenta', desc: 'Recupera 8% do dano causado como vida', pos: [1, 3],
+        max: 3, cost: 300, growth: 1.6, req: [['bar_forca', 3]], fx: [{ p: 'heroes.barbaro.lifesteal', a: 0.08 }] },
+      // ARQUEIRO
+      { id: 'arq_unlock', branch: 'arqueiro', name: 'Convocar Arqueiro', desc: 'Desbloqueia o Arqueiro (dano à distância)', pos: [1, 4],
+        max: 1, cost: 80, growth: 1, req: [['bar_forca', 1]], fx: [{ p: 'heroes.arqueiro.unlocked', set: true }] },
+      { id: 'arq_flechas', branch: 'arqueiro', name: 'Flechas Afiadas', desc: '+10% dano do Arqueiro', pos: [2, 4],
+        max: 12, cost: 60, growth: 1.35, req: [['arq_unlock', 1]], fx: [{ p: 'heroes.arqueiro.damage', m: 0.1 }] },
+      { id: 'arq_alcance', branch: 'arqueiro', name: 'Olho de Águia', desc: '+8% alcance do Arqueiro', pos: [3, 5],
+        max: 5, cost: 80, growth: 1.4, req: [['arq_flechas', 1]], fx: [{ p: 'heroes.arqueiro.range', m: 0.08 }] },
+      { id: 'arq_dupla', branch: 'arqueiro', name: 'Flecha Dupla', desc: '+15% chance de disparar 2 flechas', pos: [3, 3],
+        max: 3, cost: 300, growth: 1.6, req: [['arq_flechas', 3]], fx: [{ p: 'heroes.arqueiro.doubleShot', a: 0.15 }] },
+      // ANÃO
+      { id: 'anao_unlock', branch: 'anao', name: 'Convocar Anão', desc: 'Desbloqueia o Anão (tanque com martelo em área)', pos: [3, 4],
+        max: 1, cost: 250, growth: 1, req: [['arq_flechas', 2]], fx: [{ p: 'heroes.anao.unlocked', set: true }] },
+      { id: 'anao_martelo', branch: 'anao', name: 'Martelo Rúnico', desc: '+10% dano do Anão', pos: [4, 4],
+        max: 8, cost: 80, growth: 1.35, req: [['anao_unlock', 1]], fx: [{ p: 'heroes.anao.damage', m: 0.1 }] },
+      { id: 'anao_couraca', branch: 'anao', name: 'Couraça de Mithril', desc: '+10% vida do Anão', pos: [4, 5],
+        max: 8, cost: 80, growth: 1.35, req: [['anao_unlock', 1]], fx: [{ p: 'heroes.anao.hp', m: 0.1 }] },
+      { id: 'anao_atordoar', branch: 'anao', name: 'Tremor', desc: '+12% chance de atordoar (1s)', pos: [5, 3],
+        max: 3, cost: 350, growth: 1.6, req: [['anao_martelo', 3]], fx: [{ p: 'heroes.anao.stun', a: 0.12 }] },
+      // ELFO
+      { id: 'elfo_unlock', branch: 'elfo', name: 'Convocar Elfo', desc: 'Desbloqueia o Elfo (disparos rápidos, longo alcance)', pos: [5, 4],
+        max: 1, cost: 500, growth: 1, req: [['anao_martelo', 2]], fx: [{ p: 'heroes.elfo.unlocked', set: true }] },
+      { id: 'elfo_precisao', branch: 'elfo', name: 'Precisão Élfica', desc: '+10% dano do Elfo', pos: [6, 4],
+        max: 8, cost: 100, growth: 1.35, req: [['elfo_unlock', 1]], fx: [{ p: 'heroes.elfo.damage', m: 0.1 }] },
+      { id: 'elfo_agilidade', branch: 'elfo', name: 'Agilidade', desc: '-5% intervalo de ataque do Elfo', pos: [6, 5],
+        max: 6, cost: 120, growth: 1.4, req: [['elfo_unlock', 1]], fx: [{ p: 'heroes.elfo.interval', m: -0.05 }] },
+      { id: 'elfo_multi', branch: 'elfo', name: 'Chuva de Flechas', desc: '+1 alvo extra por disparo', pos: [7, 3],
+        max: 2, cost: 600, growth: 2, req: [['elfo_precisao', 3]], fx: [{ p: 'heroes.elfo.extraTargets', a: 1 }] },
+      // MAGO
+      { id: 'mago_unlock', branch: 'mago', name: 'Convocar Mago', desc: 'Desbloqueia o Mago (bola de fogo em área)', pos: [7, 4],
+        max: 1, cost: 800, growth: 1, req: [['elfo_precisao', 2]], fx: [{ p: 'heroes.mago.unlocked', set: true }] },
+      { id: 'mago_arcano', branch: 'mago', name: 'Poder Arcano', desc: '+10% dano do Mago', pos: [8, 4],
+        max: 8, cost: 120, growth: 1.35, req: [['mago_unlock', 1]], fx: [{ p: 'heroes.mago.damage', m: 0.1 }] },
+      { id: 'mago_explosao', branch: 'mago', name: 'Explosão Ampla', desc: '+10% raio da explosão', pos: [8, 5],
+        max: 5, cost: 150, growth: 1.45, req: [['mago_unlock', 1]], fx: [{ p: 'heroes.mago.splash', m: 0.1 }] },
+      { id: 'mago_gelo', branch: 'mago', name: 'Toque Gélido', desc: 'Ataques deixam alvos 15% mais lentos', pos: [9, 4],
+        max: 3, cost: 450, growth: 1.6, req: [['mago_arcano', 3]], fx: [{ p: 'heroes.mago.slowOnHit', a: 0.15 }] },
+      // ARCANO
+      { id: 'pod_raio', branch: 'arcano', name: 'Desbloquear Raio', desc: 'Raio em cadeia que salta entre inimigos', pos: [3, 2],
+        max: 1, cost: 350, growth: 1, req: [['mira_ampla', 1]], fx: [{ p: 'powers.raio.unlocked', set: true }] },
+      { id: 'pod_raio_forca', branch: 'arcano', name: 'Tempestade', desc: '+15% dano do Raio', pos: [4, 1],
+        max: 6, cost: 150, growth: 1.4, req: [['pod_raio', 1]], fx: [{ p: 'powers.raio.damage', m: 0.15 }] },
+      { id: 'pod_raio_cadeia', branch: 'arcano', name: 'Condutor', desc: '+1 salto do Raio', pos: [4, 2],
+        max: 4, cost: 250, growth: 1.6, req: [['pod_raio', 1]], fx: [{ p: 'powers.raio.chains', a: 1 }] },
+      { id: 'pod_gelo', branch: 'arcano', name: 'Desbloquear Chuva de Gelo', desc: 'Área que causa dano e lentidão', pos: [8, 2],
+        max: 1, cost: 650, growth: 1, req: [['pod_raio_cadeia', 1], ['mago_unlock', 1]], fx: [{ p: 'powers.gelo.unlocked', set: true }] },
+      { id: 'pod_gelo_forca', branch: 'arcano', name: 'Granizo', desc: '+15% dano da Chuva de Gelo', pos: [9, 1],
+        max: 6, cost: 180, growth: 1.4, req: [['pod_gelo', 1]], fx: [{ p: 'powers.gelo.dps', m: 0.15 }] },
+      { id: 'pod_gelo_area', branch: 'arcano', name: 'Nevasca', desc: '+10% área da Chuva de Gelo', pos: [9, 0],
+        max: 4, cost: 220, growth: 1.5, req: [['pod_gelo', 1]], fx: [{ p: 'powers.gelo.radius', m: 0.1 }] },
+      { id: 'pod_meteoro', branch: 'arcano', name: 'Desbloquear Meteoro', desc: 'Impacto devastador em área', pos: [10, 2],
+        max: 1, cost: 1100, growth: 1, req: [['pod_gelo', 1]], fx: [{ p: 'powers.meteoro.unlocked', set: true }] },
+      { id: 'pod_meteoro_forca', branch: 'arcano', name: 'Núcleo Ardente', desc: '+15% dano do Meteoro', pos: [11, 1],
+        max: 6, cost: 220, growth: 1.4, req: [['pod_meteoro', 1]], fx: [{ p: 'powers.meteoro.damage', m: 0.15 }] },
+      { id: 'pod_meteoro_area', branch: 'arcano', name: 'Cratera', desc: '+10% área do Meteoro', pos: [11, 2],
+        max: 4, cost: 260, growth: 1.5, req: [['pod_meteoro', 1]], fx: [{ p: 'powers.meteoro.radius', m: 0.1 }] },
+      { id: 'pod_canalizacao', branch: 'arcano', name: 'Canalização', desc: '-8% recarga de todos os poderes', pos: [11, 3],
+        max: 5, cost: 700, growth: 1.5, req: [['pod_meteoro', 1]], fx: [{ p: 'powers.*.cooldown', m: -0.08 }] },
+      { id: 'pod_foco', branch: 'arcano', name: 'Foco Arcano', desc: 'Poderes custam -1 ponto de convocação', pos: [12, 3],
+        max: 2, cost: 1500, growth: 2, req: [['pod_canalizacao', 2]], fx: [{ p: 'powers.*.cost', a: -1 }] },
+      // TESOURO
+      { id: 'eco_saque', branch: 'economia', name: 'Saque', desc: '+6% Florins por abate', pos: [2, 6],
+        max: 10, cost: 60, growth: 1.4, req: [['bar_vida', 1]], fx: [{ p: 'florimMult', m: 0.06 }] },
+      { id: 'eco_tesouro', branch: 'economia', name: 'Tesouro Real', desc: '+20% bônus de vitória', pos: [3, 6],
+        max: 5, cost: 100, growth: 1.45, req: [['eco_saque', 2]], fx: [{ p: 'victoryMult', m: 0.2 }] },
+    ],
+  };
+});
+</script>
+<script>
+/* ===== www/js/progress.js ===== */
+/*
+ * Progressão: cadeia de evolução, atributos efetivos, geração de níveis, recompensas.
+ * Sem DOM — usado pelo jogo e pelo simulador (tools/simulate.js).
+ */
+(function (root, factory) {
+  const cfg = root.TD_CONFIG || (typeof require === 'function' ? require('./config.js') : null);
+  const mod = factory(cfg);
+  if (typeof module === 'object' && module.exports) module.exports = mod;
+  else root.TD_PROGRESS = mod;
+})(typeof self !== 'undefined' ? self : this, function (CFG) {
+  'use strict';
+
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const nodeById = {};
+  CFG.tree.forEach((n) => { nodeById[n.id] = n; });
+
+  // RNG determinístico (mulberry32) — o simulador usa sementes fixas.
+  function makeRng(seed) {
+    let a = (seed >>> 0) || 1;
+    return function () {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function defaultSave() {
+    return { version: 2, florins: 0, unlockedLevel: 1, cleared: {}, ranks: {} };
+  }
+
+  const rankOf = (save, id) => save.ranks[id] || 0;
+
+  function nodeCost(node, rank) {
+    return Math.round(node.cost * Math.pow(node.growth, rank));
+  }
+
+  function reqMet(save, node) {
+    return (node.req || []).every(([id, r]) => rankOf(save, id) >= r);
+  }
+
+  function canBuy(save, nodeOrId) {
+    const node = typeof nodeOrId === 'string' ? nodeById[nodeOrId] : nodeOrId;
+    const rank = rankOf(save, node.id);
+    if (rank >= node.max) return { ok: false, reason: 'max' };
+    if (!reqMet(save, node)) return { ok: false, reason: 'req' };
+    const cost = nodeCost(node, rank);
+    if (save.florins < cost) return { ok: false, reason: 'florins', cost };
+    return { ok: true, cost };
+  }
+
+  function buy(save, id) {
+    const node = nodeById[id];
+    const chk = canBuy(save, node);
+    if (!chk.ok) return false;
+    save.florins -= chk.cost;
+    save.ranks[id] = rankOf(save, id) + 1;
+    return true;
+  }
+
+  // ---------- atributos efetivos ----------
+  function baseStats() {
+    return {
+      tower: clone(CFG.tower),
+      aim: clone(CFG.aim),
+      respawn: CFG.heroDefaults.respawn,
+      bonusPoints: 0,
+      heroes: clone(CFG.heroes),
+      powers: clone(CFG.powers),
+      tavern: clone(CFG.tavern),
+      florimMult: 1,
+      victoryMult: 1,
+    };
+  }
+
+  function expandPath(stats, path) {
+    const parts = path.split('.');
+    let out = [[]];
+    let objs = [stats];
+    for (const part of parts) {
+      const nextOut = [];
+      const nextObjs = [];
+      out.forEach((prefix, i) => {
+        const o = objs[i];
+        const keys = part === '*' ? Object.keys(o) : [part];
+        keys.forEach((k) => { nextOut.push(prefix.concat(k)); nextObjs.push(o[k]); });
+      });
+      out = nextOut; objs = nextObjs;
+    }
+    return out;
+  }
+
+  function computeStats(save) {
+    const stats = baseStats();
+    const acc = {}; // caminho -> {m, a, set}
+    CFG.tree.forEach((node) => {
+      const r = rankOf(save, node.id);
+      if (!r) return;
+      node.fx.forEach((fx) => {
+        expandPath(stats, fx.p).forEach((parts) => {
+          const key = parts.join('.');
+          const e = acc[key] || (acc[key] = { parts, m: 0, a: 0, set: undefined });
+          if (fx.set !== undefined) e.set = fx.set;
+          if (fx.m) e.m += fx.m * r;
+          if (fx.a) e.a += fx.a * r;
+        });
+      });
+    });
+    Object.values(acc).forEach((e) => {
+      let o = stats;
+      for (let i = 0; i < e.parts.length - 1; i++) o = o[e.parts[i]];
+      const k = e.parts[e.parts.length - 1];
+      if (e.set !== undefined) o[k] = e.set;
+      else o[k] = o[k] * Math.max(0.3, 1 + e.m) + e.a;
+    });
+    Object.values(stats.powers).forEach((p) => { p.cost = Math.max(1, p.cost); });
+    return stats;
+  }
+
+  function summonPoints(level, stats) {
+    const s = CFG.summon;
+    return s.basePoints + Math.floor((level - 1) * s.pointsPerLevel) + (stats ? stats.bonusPoints : 0);
+  }
+
+  function victoryReward(level, stats, firstClear) {
+    const e = CFG.economy;
+    const base = (e.victoryBase + e.victoryPerLevel * level) * (stats ? stats.victoryMult : 1);
+    return Math.round(base * (firstClear ? 1 : e.replayVictoryFactor));
+  }
+
+  // ---------- geração de níveis ----------
+  function isBossLevel(level) { return level % CFG.levels.bossEvery === 0; }
+  // chefão da faixa de níveis (o de maior bossFrom que já foi alcançado)
+  function bossFor(level) {
+    let best = null;
+    Object.entries(CFG.enemies).forEach(([id, e]) => {
+      if (e.boss && e.bossFrom <= level && (!best || e.bossFrom > CFG.enemies[best].bossFrom)) best = id;
+    });
+    return best;
+  }
+  function phaseOf(level) { return Math.ceil(level / CFG.levels.bossEvery); }
+
+  function threatMult(level) {
+    const L = CFG.levels, n = level - 1;
+    return 1 + L.threatLinear * n + L.threatQuad * n * n;
+  }
+
+  function generateLevel(level, rng) {
+    rng = rng || Math.random;
+    const L = CFG.levels;
+    const nWaves = Math.min(L.wavesMax, L.wavesBase + Math.floor((level - 1) / L.wavesEvery));
+    const types = Object.entries(CFG.enemies).filter(([, e]) => !e.boss && e.unlockLevel <= level);
+    const minThreat = Math.min(...types.map(([, e]) => e.threat));
+    const spawns = [];
+    let t = L.firstDelay;
+    for (let w = 0; w < nWaves; w++) {
+      let budget = L.baseThreat * threatMult(level) * (1 + L.waveThreatStep * w);
+      const list = [];
+      while (budget >= minThreat) {
+        const fit = types.filter(([, e]) => e.threat <= budget);
+        const total = fit.reduce((s, [, e]) => s + e.weight, 0);
+        let r = rng() * total;
+        let pick = fit[0];
+        for (const f of fit) { r -= f[1].weight; if (r <= 0) { pick = f; break; } }
+        list.push(pick[0]);
+        budget -= pick[1].threat;
+      }
+      const spacing = L.waveDuration / Math.max(1, list.length);
+      list.forEach((type, i) => spawns.push({ t: t + i * spacing, type, wave: w }));
+      if (w === nWaves - 1 && isBossLevel(level)) {
+        // chefão entra depois da última onda (é o "final" da fase)
+        const type = bossFor(level);
+        const bosses = 1;
+        for (let b = 0; b < bosses; b++) spawns.push({ t: t + L.waveDuration + (L.bossDelay || 0) + b * 4, type, wave: w });
+      }
+      t += L.waveDuration + L.waveGap;
+    }
+    spawns.sort((a, b) => a.t - b.t);
+    return {
+      level,
+      waves: nWaves,
+      spawns,
+      hpMult: Math.pow(L.hpGrowth, level - 1),
+      dmgMult: Math.pow(L.dmgGrowth, level - 1),
+      rewardMult: Math.pow(L.rewardGrowth, level - 1),
+    };
+  }
+
+  return {
+    CFG, nodeById, makeRng, defaultSave, rankOf, nodeCost, reqMet, canBuy, buy,
+    computeStats, summonPoints, victoryReward, generateLevel, threatMult, isBossLevel, bossFor, phaseOf,
+  };
+});
+</script>
+<script>
+/* ===== www/js/engine.js ===== */
+/*
+ * Motor da partida — lógica pura (sem DOM). Usado pelo jogo e pelo simulador.
+ *   const g = new TD_ENGINE.Game({ levelData, stats, loadout, rng, visual })
+ *   g.setAim(x, y); g.castPower('meteoro', x, y); g.update(dt);
+ *   g.state: 'running' | 'won' | 'lost'
+ */
+(function (root, factory) {
+  const cfg = root.TD_CONFIG || (typeof require === 'function' ? require('./config.js') : null);
+  const mod = factory(cfg);
+  if (typeof module === 'object' && module.exports) module.exports = mod;
+  else root.TD_ENGINE = mod;
+})(typeof self !== 'undefined' ? self : this, function (CFG) {
+  'use strict';
+
+  const W = CFG.world.width, H = CFG.world.height;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  // ---------- zona cega atrás da torre ----------
+  // Mesma matemática da câmera (js/camera.js), sem depender da tela: só a profundidade importa.
+  const V = CFG.view;
+  const Z_FAR = 1 / V.farScale;
+  const CAM_A = (V.bottom - V.top) / (1 - V.farScale);
+  const S_NEAR = CAM_A * (Z_FAR - 1) / (H * V.tilt);
+  const camZ = (y) => Z_FAR + (1 - Z_FAR) * (y / H);
+  const TS = CFG.towerSprite;
+  const towerFeetY = (tw) => tw.y + tw.r * 0.6;            // o sprite da torre é desenhado com o pé aqui
+  const unitHeight = (r) => r * 2 * V.spriteScale;         // altura visual de um personagem (sprites.js)
+  // meia largura (no chão) da faixa escondida na profundidade y
+  function blindHalfWidth(tw, y) { return TS.halfWidth * camZ(y) / camZ(towerFeetY(tw)); }
+
+  // ângulo (em volta da torre) da posição de um herói: só no arco visível (fora do setor de trás)
+  function homeAngle(frac, radius) {
+    const beta = Math.asin(Math.min(1, (TS.halfWidth + TS.sideMargin + radius) / CFG.heroDefaults.homeRadius));
+    return -Math.PI / 2 + beta + frac * (Math.PI * 2 - 2 * beta);
+  }
+
+  function Game(opts) {
+    this.rng = opts.rng || Math.random;
+    this.visual = opts.visual !== false;
+    this.level = opts.levelData;
+    this.stats = opts.stats;
+    const s = this.stats;
+
+    this.t = 0;
+    this.speed = 1;
+    this.state = 'running';
+    this.spawnIdx = 0;
+    this.enemies = [];
+    this.heroes = [];
+    this.zones = [];
+    this.pending = [];
+    this.fx = [];
+    this.kills = 0;
+    this.killsBy = {};   // abates por tipo de invasor (bestiário)
+    this.dmgBy = {};
+    this.florins = 0;
+    this.spawned = 0;
+    this.totalEnemies = this.level.spawns.length;
+
+    this.tower = {
+      x: W / 2, y: H / 2, r: s.tower.radius,
+      hp: s.tower.hp, maxHp: s.tower.hp, armor: s.tower.armor, regen: s.tower.regen, thorns: s.tower.thorns,
+      hitT: 0,
+    };
+    this.aim = { x: W / 2, y: H / 2 - 200, active: false, cd: 0, flash: 0 };
+
+    // heróis convocados
+    const lo = opts.loadout || { heroes: {}, powers: {} };
+    const list = [];
+    Object.entries(lo.heroes || {}).forEach(([id, n]) => { for (let i = 0; i < n; i++) list.push(id); });
+    const nH = Math.min(list.length, CFG.heroDefaults.maxOnField);
+    for (let i = 0; i < nH; i++) {
+      const id = list[i];
+      const st = s.heroes[id];
+      // distribuídos pelo arco visível: exclui o setor de trás da torre
+      const ang = homeAngle((i + 0.5) / Math.max(1, nH), st.radius);
+      const home = {
+        x: this.tower.x + Math.cos(ang) * CFG.heroDefaults.homeRadius,
+        y: this.tower.y + Math.sin(ang) * CFG.heroDefaults.homeRadius,
+      };
+      this.heroes.push({
+        id, st, x: home.x, y: home.y, home, r: st.radius,
+        hp: st.hp, maxHp: st.hp, cd: this.rng() * st.interval, dead: false, respawnT: 0, target: null, face: 1,
+        anim: 0,
+      });
+    }
+    // Taberna: sorteio proporcional aos heróis convocados
+    this.tavern = null;
+    if (s.tavern && s.tavern.unlocked && nH > 0) {
+      const counts = {};
+      list.slice(0, nH).forEach((id) => { counts[id] = (counts[id] || 0) + 1; });
+      this.tavern = { t: s.tavern.firstDelay, pool: Object.entries(counts).map(([id, n]) => ({ id, w: n / nH })), made: 0, slot: 0 };
+    }
+    this.powers = {};
+    // poder comprado = disponível a partida toda, com recarga. Começa pronto.
+    Object.keys(s.powers).forEach((id) => {
+      this.powers[id] = { owned: !!(lo.powers && lo.powers[id]), cd: 0, cooldown: s.powers[id].cooldown };
+    });
+  }
+
+  const P = Game.prototype;
+
+  P.powerReady = function (id) {
+    const p = this.powers[id];
+    return !!p && p.owned && p.cd <= 0;
+  };
+
+  P.addFx = function (f) {
+    if (!this.visual) return;
+    f.max = f.ttl;
+    this.fx.push(f);
+  };
+
+  P.setAim = function (x, y) {
+    this.aim.x = Math.max(0, Math.min(W, x));
+    this.aim.y = Math.max(0, Math.min(H, y));
+    this.aim.active = true;
+  };
+
+  // ---------- dano ----------
+  P.damageEnemy = function (e, amount, pierce, src) {
+    if (e.dead) return 0;
+    const armor = Math.max(0, e.armor - (pierce || 0));
+    const eff = Math.min(e.hp, Math.max(amount * 0.25, amount - armor));
+    e.hp -= eff;
+    this.dmgBy[src || 'outros'] = (this.dmgBy[src || 'outros'] || 0) + eff;
+    e.hitT = 0.12;
+    if (e.hp <= 0) {
+      e.dead = true;
+      this.kills++;
+      this.killsBy[e.type] = (this.killsBy[e.type] || 0) + 1;
+      const gain = e.reward * this.stats.florimMult;
+      this.florins += gain;
+      this.addFx({ kind: 'death', x: e.x, y: e.y, color: e.def.color, ttl: 0.5 });
+      this.addFx({ kind: 'coin', x: e.x, y: e.y, text: '+' + Math.round(gain), ttl: 0.9 });
+    }
+    return eff;
+  };
+
+  P.damageHero = function (h, amount) {
+    const eff = Math.max(amount * 0.25, amount - h.st.armor);
+    h.hp -= eff;
+    h.hitT = 0.12;
+    if (h.hp <= 0 && !h.dead) {
+      h.dead = true;
+      h.target = null;
+      h.respawnT = this.stats.respawn;
+      if (h.tavern) h.gone = true; // herói da Taberna não renasce
+      this.addFx({ kind: 'death', x: h.x, y: h.y, color: h.st.color, ttl: 0.6 });
+    }
+  };
+
+  P.damageTower = function (amount) {
+    const eff = Math.max(amount * 0.25, amount - this.tower.armor);
+    this.tower.hp -= eff;
+    this.tower.hitT = 0.15;
+  };
+
+  // true se um personagem de raio r no ponto (x, y) fica mais da metade escondido atrás da torre
+  P.inBlindZone = function (x, y, r) {
+    const tw = this.tower;
+    const feet = towerFeetY(tw);
+    if (y >= feet) return false;                            // na frente da torre: sempre visível
+    const zf = camZ(feet), zu = camZ(y);
+    const rise = CAM_A / zf - CAM_A / zu;                   // quanto o pé dele sobe na tela (px)
+    const middle = rise + unitHeight(r) / 2 * (S_NEAR / zu); // altura do meio do corpo na tela
+    if (middle >= TS.height * (S_NEAR / zf)) return false;   // passa do topo da torre: visível
+    return Math.abs(x - tw.x) < blindHalfWidth(tw, y);
+  };
+
+  // para onde um invasor anda: em vez do centro da torre, um ponto na borda dela que fique visível.
+  // Quem vem por trás contorna pela lateral (não atravessa a zona cega).
+  P.approachPoint = function (e) {
+    const tw = this.tower;
+    const dx = e.x - tw.x, dy = e.y - tw.y;
+    const feet = towerFeetY(tw);
+    const side = dx > 0.5 ? 1 : dx < -0.5 ? -1 : (e.side || 1);
+    const hw = blindHalfWidth(tw, Math.min(e.y, feet));
+    if (e.y < feet && Math.abs(dx) < hw) {
+      // atrás da torre, dentro da faixa escondida: sai pela lateral (com folga) enquanto avança
+      return { x: tw.x + side * (hw + TS.sideMargin + e.r), y: e.y + (feet - e.y) * 0.35 };
+    }
+    // ponto da borda da torre (ao alcance do golpe) na direção do invasor
+    const rr = tw.r + e.r + Math.min(e.range, 20) * 0.5;
+    const d = Math.hypot(dx, dy) || 1;
+    let px = dx / d * rr, py = dy / d * rr;
+    if (tw.y + py < feet && Math.abs(px) < hw + TS.sideMargin) {
+      // cairia atrás da torre: ataca pela lateral, na altura do pé da torre (sempre visível)
+      py = feet - tw.y;
+      px = side * Math.sqrt(Math.max(0, rr * rr - py * py));
+    }
+    return { x: tw.x + px, y: tw.y + py };
+  };
+
+  P.enemiesNear = function (x, y, r) {
+    return this.enemies.filter((e) => !e.dead && Math.hypot(e.x - x, e.y - y) <= r + e.r);
+  };
+
+  // ---------- spawn ----------
+  P.spawn = function (type) {
+    const def = CFG.enemies[type];
+    const lv = this.level;
+    // ponto aleatório em todo o contorno do mapa (uniforme pelo perímetro), um pouco para fora da borda
+    const m = CFG.world.spawnMargin;
+    let d = this.rng() * 2 * (W + H);
+    let x, y;
+    if (d < W) { x = d; y = -m; }
+    else if ((d -= W) < H) { x = W + m; y = d; }
+    else if ((d -= H) < W) { x = W - d; y = H + m; }
+    else { d -= W; x = -m; y = H - d; }
+    const hp = def.hp * lv.hpMult * (def.boss ? (CFG.levels.bossHpMult || 1) : 1);
+    this.enemies.push({
+      type, def, x, y, r: def.radius,
+      hp, maxHp: hp, speed: def.speed, damage: def.damage * lv.dmgMult * (def.boss ? (CFG.levels.bossDmgMult || 1) : 1), interval: def.interval,
+      range: def.range, armor: def.armor, reward: def.reward * lv.rewardMult, ranged: !!def.ranged,
+      cd: def.interval * 0.5, slow: 0, slowT: 0, stunT: 0, dead: false, hitT: 0, anim: this.rng() * 6,
+      side: this.rng() < 0.5 ? -1 : 1,
+    });
+    this.spawned++;
+  };
+
+  // ---------- poderes ----------
+  P.castPower = function (id, x, y) {
+    if (this.state !== 'running' || !this.powerReady(id)) return false;
+    const p = this.stats.powers[id];
+    if (id === 'raio') {
+      let first = null, best = 140;
+      this.enemies.forEach((e) => { if (!e.dead) { const d = Math.hypot(e.x - x, e.y - y); if (d < best) { best = d; first = e; } } });
+      if (!first) return false;
+      const hit = [first];
+      let cur = first, dmg = p.damage;
+      const pts = [{ x: cur.x, y: cur.y - 400 }, { x: cur.x, y: cur.y }];
+      this.damageEnemy(cur, dmg, 0, 'raio');
+      for (let i = 1; i < Math.round(p.chains); i++) {
+        let nx = null, nd = p.chainRange;
+        this.enemies.forEach((e) => {
+          if (e.dead || hit.includes(e)) return;
+          const d = dist(e, cur);
+          if (d < nd) { nd = d; nx = e; }
+        });
+        if (!nx) break;
+        dmg *= p.falloff;
+        hit.push(nx); cur = nx;
+        pts.push({ x: cur.x, y: cur.y });
+        this.damageEnemy(cur, dmg, 0, 'raio');
+      }
+      this.addFx({ kind: 'lightning', pts, ttl: 0.35 });
+    } else if (id === 'gelo') {
+      this.zones.push({ x, y, r: p.radius, dps: p.dps, slow: p.slow, t: p.duration, max: p.duration });
+    } else if (id === 'meteoro') {
+      this.pending.push({ x, y, r: p.radius, damage: p.damage, t: p.delay, max: p.delay });
+    } else return false;
+    this.powers[id].cd = this.powers[id].cooldown;
+    return true;
+  };
+
+  // ---------- loop ----------
+  P.update = function (dt) {
+    if (this.state !== 'running') return;
+    this.t += dt;
+    const tw = this.tower;
+
+    while (this.spawnIdx < this.level.spawns.length && this.level.spawns[this.spawnIdx].t <= this.t) {
+      this.spawn(this.level.spawns[this.spawnIdx].type);
+      this.spawnIdx++;
+    }
+
+    tw.hp = Math.min(tw.maxHp, tw.hp + tw.regen * dt);
+    tw.hitT = Math.max(0, tw.hitT - dt);
+    Object.values(this.powers).forEach((p) => { if (p.cd > 0) p.cd -= dt; });
+
+    this.updateAim(dt);
+    this.updateTavern(dt);
+    this.heroes.forEach((h) => this.updateHero(h, dt));
+    if (this.heroes.some((h) => h.gone)) this.heroes = this.heroes.filter((h) => !h.gone);
+    this.enemies.forEach((e) => this.updateEnemy(e, dt));
+    this.updateZones(dt);
+
+    this.enemies = this.enemies.filter((e) => !e.dead);
+    for (let i = this.fx.length - 1; i >= 0; i--) {
+      this.fx[i].ttl -= dt;
+      if (this.fx[i].ttl <= 0) this.fx.splice(i, 1);
+    }
+
+    if (tw.hp <= 0) { tw.hp = 0; this.state = 'lost'; }
+    else if (this.spawnIdx >= this.level.spawns.length && this.enemies.length === 0) this.state = 'won';
+  };
+
+  // Reviver (recompensa de anúncio): só uma vez por partida, só depois de perder.
+  P.canRevive = function () { return this.state === 'lost' && !this.revived; };
+  P.revive = function () {
+    if (!this.canRevive()) return false;
+    const A = CFG.ads;
+    const tw = this.tower;
+    this.revived = true;
+    this.state = 'running';
+    tw.hp = tw.maxHp * A.reviveHp;
+    // onda de choque: empurra e atordoa quem está perto
+    this.enemies.forEach((e) => {
+      const d = dist(e, tw);
+      if (d > A.reviveRadius) return;
+      const k = (A.reviveRadius - d) / Math.max(1, d);
+      e.x += (e.x - tw.x) * Math.min(k, 1.5);
+      e.y += (e.y - tw.y) * Math.min(k, 1.5);
+      e.stunT = Math.max(e.stunT, A.reviveStun);
+    });
+    this.addFx({ kind: 'explosion', x: tw.x, y: tw.y, r: A.reviveRadius, ttl: 0.8 });
+    return true;
+  };
+
+  P.currentWave = function () {
+    const s = this.level.spawns[Math.min(this.spawnIdx, this.level.spawns.length - 1)];
+    return s ? s.wave + 1 : 1;
+  };
+
+  // Taberna: enquanto houver vaga, a cada `interval` segundos entra um herói sorteado na proporção dos convocados
+  P.tavernAlive = function () { return this.heroes.filter((h) => h.tavern && !h.dead).length; };
+  P.updateTavern = function (dt) {
+    const tv = this.tavern;
+    if (!tv) return;
+    const st = this.stats.tavern;
+    if (this.tavernAlive() >= st.max) return;                       // sem vaga: relógio parado
+    tv.t -= dt;
+    if (tv.t > 0) return;
+    if (this.heroes.filter((h) => !h.dead).length >= CFG.heroDefaults.maxOnField) return; // campo cheio: espera
+    tv.t = st.interval;
+    let r = this.rng(), id = tv.pool[tv.pool.length - 1].id;
+    for (const p of tv.pool) { if (r < p.w) { id = p.id; break; } r -= p.w; }
+    const hs = this.stats.heroes[id];
+    // posição de guarda: alterna pelos lados do arco visível
+    const frac = [0.2, 0.8, 0.35, 0.65, 0.5][tv.slot++ % 5];
+    const ang = homeAngle(frac, hs.radius);
+    const tw = this.tower;
+    const home = { x: tw.x + Math.cos(ang) * CFG.heroDefaults.homeRadius, y: tw.y + Math.sin(ang) * CFG.heroDefaults.homeRadius };
+    this.heroes.push({
+      id, st: hs, x: tw.x, y: tw.y + tw.r + hs.radius, home, r: hs.radius, // sai pela porta da torre
+      hp: hs.hp, maxHp: hs.hp, cd: hs.interval, dead: false, respawnT: 0, target: null, face: 1, anim: 0, tavern: true,
+    });
+    tv.made++;
+    this.addFx({ kind: 'respawn', x: tw.x, y: tw.y + tw.r + hs.radius, ttl: 0.5 });
+    this.addFx({ kind: 'tavern', x: tw.x, y: tw.y + tw.r, hero: id, ttl: 1.6 });
+  };
+
+  P.updateAim = function (dt) {
+    const a = this.aim, st = this.stats.aim;
+    a.flash = Math.max(0, a.flash - dt);
+    if (!a.active) return;
+    a.cd -= dt;
+    if (a.cd > 0) return;
+    a.cd += st.interval;
+    if (a.cd < 0) a.cd = st.interval;
+    a.flash = 0.18;
+    const targets = this.enemiesNear(a.x, a.y, st.radius);
+    let crit = false;
+    targets.forEach((e) => {
+      let dmg = st.damage;
+      if (this.rng() < st.critChance) { dmg *= st.critMult; crit = true; }
+      this.damageEnemy(e, dmg, st.pierce, 'mira');
+    });
+    this.addFx({ kind: 'aimPulse', x: a.x, y: a.y, r: st.radius, crit, ttl: 0.3 });
+  };
+
+  P.pickHeroTarget = function (h) {
+    const leash = CFG.heroDefaults.leash;
+    const tw = this.tower;
+    if (h.target && !h.target.dead && dist(h.target, tw) <= leash + 40) return h.target;
+    let best = null, bd = Infinity;
+    this.enemies.forEach((e) => {
+      if (e.dead) return;
+      const dt = dist(e, tw);
+      if (dt > leash && dist(e, h) - e.r - h.r > h.st.range) return;
+      // prioriza inimigos perto do herói, com bônus para os perto da torre
+      const score = dist(e, h) + dt * 0.5;
+      if (score < bd) { bd = score; best = e; }
+    });
+    return best;
+  };
+
+  P.moveTo = function (o, tx, ty, speed, dt) {
+    const dx = tx - o.x, dy = ty - o.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 1) return;
+    const step = Math.min(d, speed * dt);
+    o.x += (dx / d) * step;
+    o.y += (dy / d) * step;
+    if (Math.abs(dx) > 0.5) o.face = dx > 0 ? 1 : -1;
+    o.anim = (o.anim || 0) + dt * 8;
+  };
+
+  P.updateHero = function (h, dt) {
+    const st = h.st;
+    h.hitT = Math.max(0, (h.hitT || 0) - dt);
+    if (h.dead) {
+      h.respawnT -= dt;
+      if (h.respawnT <= 0) {
+        h.dead = false; h.hp = h.maxHp; h.cd = st.interval;
+        h.x = this.tower.x; h.y = this.tower.y + this.tower.r + h.r; // renasce na porta (frente), visível
+        this.addFx({ kind: 'respawn', x: h.x, y: h.y, ttl: 0.5 });
+      }
+      return;
+    }
+    h.cd -= dt;
+    h.target = this.pickHeroTarget(h);
+    const tg = h.target;
+    if (!tg) { this.moveTo(h, h.home.x, h.home.y, st.speed, dt); return; }
+    const edge = dist(h, tg) - tg.r - h.r;
+    if (edge > st.range) { this.moveTo(h, tg.x, tg.y, st.speed, dt); return; }
+    h.face = tg.x > h.x ? 1 : -1;
+    // não fica parado atrás da torre: continua atacando, mas sai pela lateral
+    if (this.inBlindZone(h.x, h.y, h.r)) {
+      const tw = this.tower;
+      const side = h.x >= tw.x ? 1 : -1;
+      this.moveTo(h, tw.x + side * (blindHalfWidth(tw, h.y) + TS.sideMargin + h.r), h.y, st.speed, dt);
+      h.face = tg.x > h.x ? 1 : -1;
+    }
+    if (h.cd > 0) return;
+    h.cd = st.interval;
+    this.heroAttack(h, tg);
+  };
+
+  P.heroAttack = function (h, tg) {
+    const st = h.st;
+    const targets = [tg];
+    if (st.extraTargets) {
+      const others = this.enemies
+        .filter((e) => !e.dead && e !== tg && dist(e, h) - e.r - h.r <= st.range)
+        .sort((a, b) => dist(a, h) - dist(b, h));
+      for (let i = 0; i < Math.round(st.extraTargets) && i < others.length; i++) targets.push(others[i]);
+    }
+    const shots = st.doubleShot && this.rng() < st.doubleShot ? 2 : 1;
+    let dealt = 0;
+    for (let s = 0; s < shots; s++) {
+      targets.forEach((t) => {
+        if (t.dead) return;
+        dealt += this.damageEnemy(t, st.damage, 0, h.id);
+        if (st.splash) {
+          this.enemiesNear(t.x, t.y, st.splash).forEach((o) => { if (o !== t) dealt += this.damageEnemy(o, st.damage * 0.7, 0, h.id); });
+        }
+        if (st.stun && this.rng() < st.stun) t.stunT = 1.0;
+        if (st.slowOnHit) { t.slow = Math.max(t.slow, st.slowOnHit); t.slowT = Math.max(t.slowT, 2); }
+        if (st.range > 40) this.addFx({ kind: 'proj', hero: h.id, x: h.x, y: h.y, x2: t.x, y2: t.y, ttl: 0.18 });
+        else this.addFx({ kind: 'slash', x: t.x, y: t.y, ttl: 0.2 });
+        if (st.splash) this.addFx({ kind: 'blast', x: t.x, y: t.y, r: st.splash, hero: h.id, ttl: 0.3 });
+      });
+    }
+    if (st.lifesteal) h.hp = Math.min(h.maxHp, h.hp + dealt * st.lifesteal);
+  };
+
+  P.updateEnemy = function (e, dt) {
+    if (e.dead) return;
+    e.hitT = Math.max(0, e.hitT - dt);
+    if (e.stunT > 0) { e.stunT -= dt; return; }
+    if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slow = 0; }
+    const speed = e.speed * (1 - e.slow);
+    e.cd -= dt;
+    const tw = this.tower;
+    const dTower = dist(e, tw) - tw.r - e.r;
+
+    if (e.ranged) {
+      if (dTower > e.range || this.inBlindZone(e.x, e.y, e.r)) {
+        const ap = this.approachPoint(e);
+        this.moveTo(e, ap.x, ap.y, speed, dt);
+        return;
+      }
+      if (e.cd <= 0) {
+        e.cd = e.interval;
+        this.damageTower(e.damage);
+        this.addFx({ kind: 'enemyProj', x: e.x, y: e.y, x2: tw.x, y2: tw.y, ttl: 0.3 });
+      }
+      return;
+    }
+
+    // bloqueio por herói adjacente
+    let blocker = null, bd = 12;
+    this.heroes.forEach((h) => {
+      if (h.dead) return;
+      const d = dist(e, h) - e.r - h.r;
+      if (d < bd) { bd = d; blocker = h; }
+    });
+    if (blocker) {
+      if (e.cd <= 0) {
+        e.cd = e.interval;
+        this.damageHero(blocker, e.damage);
+        this.addFx({ kind: 'bite', x: blocker.x, y: blocker.y, ttl: 0.15 });
+      }
+      return;
+    }
+    if (dTower > e.range) {
+      const ap = this.approachPoint(e);
+      this.moveTo(e, ap.x, ap.y, speed, dt);
+      return;
+    }
+    if (e.cd <= 0) {
+      e.cd = e.interval;
+      this.damageTower(e.damage);
+      if (tw.thorns) this.damageEnemy(e, tw.thorns, 99, 'espinhos');
+      this.addFx({ kind: 'bite', x: e.x + (tw.x - e.x) * 0.3, y: e.y + (tw.y - e.y) * 0.3, ttl: 0.15 });
+    }
+  };
+
+  P.updateZones = function (dt) {
+    for (let i = this.zones.length - 1; i >= 0; i--) {
+      const z = this.zones[i];
+      z.t -= dt;
+      this.enemiesNear(z.x, z.y, z.r).forEach((e) => {
+        this.damageEnemy(e, z.dps * dt, 99, 'gelo'); // dano contínuo ignora armadura
+        e.slow = Math.max(e.slow, z.slow);
+        e.slowT = Math.max(e.slowT, 0.3);
+      });
+      if (z.t <= 0) this.zones.splice(i, 1);
+    }
+    for (let i = this.pending.length - 1; i >= 0; i--) {
+      const m = this.pending[i];
+      m.t -= dt;
+      if (m.t <= 0) {
+        this.enemiesNear(m.x, m.y, m.r).forEach((e) => this.damageEnemy(e, m.damage, 0, 'meteoro'));
+        this.addFx({ kind: 'explosion', x: m.x, y: m.y, r: m.r, ttl: 0.6 });
+        this.pending.splice(i, 1);
+      }
+    }
+  };
+
+  P.result = function () {
+    return {
+      won: this.state === 'won',
+      kills: this.kills,
+      killsBy: this.killsBy,
+      tavernHeroes: this.tavern ? this.tavern.made : 0,
+      total: this.totalEnemies,
+      florins: Math.round(this.florins),
+      towerPct: this.tower.hp / this.tower.maxHp,
+      time: this.t,
+      dmgBy: this.dmgBy,
+    };
+  };
+
+  return { Game };
+});
+</script>
+<script>
+/* ===== www/js/bot.js ===== */
+/*
+ * Bot: jogador automático usado pelo simulador de balanceamento.
+ * Também usado pelo jogo no botão "Auto" da tela de convocação (autoLoadout).
+ */
+(function (root, factory) {
+  const cfg = root.TD_CONFIG || (typeof require === 'function' ? require('./config.js') : null);
+  const mod = factory(cfg);
+  if (typeof module === 'object' && module.exports) module.exports = mod;
+  else root.TD_BOT = mod;
+})(typeof self !== 'undefined' ? self : this, function (CFG) {
+  'use strict';
+
+  // Perfis de habilidade humana:
+  //  noise    = erro médio da mira (px)        reaction = tempo para reavaliar alvo (s)
+  //  trackSpd = velocidade máx. do dedo (px/s) powerSkill = chance de usar poder no momento certo
+  const PROFILES = {
+    casual: { noise: 45, reaction: 0.6, trackSpd: 900,  powerSkill: 0.5 },
+    medio:  { noise: 28, reaction: 0.35, trackSpd: 1400, powerSkill: 0.8 },
+    bom:    { noise: 14, reaction: 0.18, trackSpd: 2200, powerSkill: 1.0 },
+  };
+
+  function gauss(rng) {
+    let u = 0, v = 0;
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function bestCluster(game, radius, maxTowerDist) {
+    const tw = game.tower;
+    let best = null, bestScore = -1, bestCount = 0;
+    game.enemies.forEach((e) => {
+      if (e.dead) return;
+      const dT = Math.hypot(e.x - tw.x, e.y - tw.y) - tw.r;
+      if (maxTowerDist && dT > maxTowerDist) return;
+      let count = 0, hp = 0;
+      game.enemies.forEach((o) => {
+        if (!o.dead && Math.hypot(o.x - e.x, o.y - e.y) <= radius) { count++; hp += o.hp; }
+      });
+      const urgency = Math.max(0, 1 - dT / 400);
+      const score = count + urgency * 2 + (e.def.boss ? 1.5 : 0);
+      if (score > bestScore) { bestScore = score; best = e; bestCount = count; }
+    });
+    return best ? { e: best, count: bestCount } : null;
+  }
+
+  function AimBot(profileName, rng) {
+    this.p = PROFILES[profileName] || PROFILES.medio;
+    this.rng = rng;
+    this.decideT = 0;
+    this.powerT = 0;
+    this.target = null;
+    this.off = { x: 0, y: 0 };
+    this.pos = null;
+  }
+
+  AimBot.prototype.tick = function (game, dt) {
+    const p = this.p, rng = this.rng;
+    this.decideT -= dt;
+    if (this.decideT <= 0 || !this.target || this.target.dead) {
+      this.decideT = p.reaction;
+      const c = bestCluster(game, game.stats.aim.radius * 0.9);
+      this.target = c ? c.e : null;
+      this.off = { x: gauss(rng) * p.noise * 0.7, y: gauss(rng) * p.noise * 0.7 };
+    }
+    if (this.target) {
+      const want = { x: this.target.x + this.off.x, y: this.target.y + this.off.y };
+      if (!this.pos) this.pos = { x: game.tower.x, y: game.tower.y - 150 };
+      const dx = want.x - this.pos.x, dy = want.y - this.pos.y;
+      const d = Math.hypot(dx, dy);
+      const step = Math.min(d, p.trackSpd * dt);
+      if (d > 0) { this.pos.x += dx / d * step; this.pos.y += dy / d * step; }
+      game.setAim(this.pos.x, this.pos.y);
+    }
+
+    // poderes
+    this.powerT -= dt;
+    if (this.powerT > 0) return;
+    this.powerT = 0.5;
+    if (rng() > p.powerSkill) return;
+    const danger = game.tower.hp / game.tower.maxHp < 0.45;
+    const pw = game.stats.powers;
+    if (game.powerReady('meteoro')) {
+      const c = bestCluster(game, pw.meteoro.radius * 0.8);
+      if (c && (c.count >= 4 || (c.e.def.boss && c.count >= 1) || (danger && c.count >= 2))) {
+        game.castPower('meteoro', c.e.x, c.e.y); return;
+      }
+    }
+    if (game.powerReady('gelo')) {
+      const c = bestCluster(game, pw.gelo.radius * 0.8, 320);
+      if (c && (c.count >= 4 || (danger && c.count >= 2))) { game.castPower('gelo', c.e.x, c.e.y); return; }
+    }
+    if (game.powerReady('raio')) {
+      const c = bestCluster(game, pw.raio.chainRange);
+      if (c && (c.count >= 3 || (danger && c.count >= 1))) { game.castPower('raio', c.e.x, c.e.y); }
+    }
+  };
+
+  // Monta um time automaticamente com os pontos disponíveis.
+  function autoLoadout(points, stats) {
+    const lo = { heroes: {}, powers: {} };
+    let left = points;
+    const powIds = ['meteoro', 'gelo', 'raio'].filter((id) => stats.powers[id].unlocked);
+    // até 40% dos pontos em poderes (cada poder só pode ser comprado uma vez)
+    let pBudget = Math.floor(points * 0.4);
+    for (const id of powIds) {
+      const c = stats.powers[id].cost;
+      if (c <= pBudget) { lo.powers[id] = 1; pBudget -= c; left -= c; }
+    }
+    const order = ['barbaro', 'arqueiro', 'anao', 'mago', 'elfo'].filter((id) => stats.heroes[id].unlocked);
+    let count = 0, bought = true;
+    while (bought && count < CFG.heroDefaults.maxOnField) {
+      bought = false;
+      for (const id of order) {
+        const c = stats.heroes[id].cost;
+        if (c <= left && count < CFG.heroDefaults.maxOnField) {
+          lo.heroes[id] = (lo.heroes[id] || 0) + 1; left -= c; count++; bought = true;
+        }
+      }
+    }
+    return lo;
+  }
+
+  // Estratégia de compra da cadeia de evolução: menor custo / peso.
+  const BRANCH_WEIGHT = { mira: 1.3, comando: 1.4, torre: 1.0, economia: 0.9, arcano: 1.0, taberna: 2.0 };
+  function spendFlorins(P, save) {
+    for (let guard = 0; guard < 200; guard++) {
+      let best = null, bestScore = Infinity;
+      CFG.tree.forEach((n) => {
+        const chk = P.canBuy(save, n);
+        if (!chk.ok) return;
+        let w = BRANCH_WEIGHT[n.branch] || 1.0;
+        if (n.max === 1) w *= 2.0; // desbloqueios valem muito
+        const score = chk.cost / w;
+        if (score < bestScore) { bestScore = score; best = n; }
+      });
+      if (!best) return;
+      P.buy(save, best.id);
+    }
+  }
+
+  return { PROFILES, AimBot, autoLoadout, spendFlorins, bestCluster };
+});
+</script>
+<script>
+/* ===== tools/balance-model.js ===== */
+/*
+ * Modelo analítico de balanceamento (rápido, sem simular a partida).
+ * Usado pela página tools/balanceamento.html e testável no Node.
+ *
+ * Para cada nível, supondo que o jogador vence de primeira e gasta os Florins como o bot:
+ *   - Força dos invasores = vida efetiva somada de todos os invasores do nível
+ *     (vida × chefão × armadura contra os golpes do time)
+ *   - Força do time       = dano por segundo (heróis + mira + poderes + Taberna) × duração do nível × eficiência
+ *   - Folga               = força do time ÷ força dos invasores  (>1 sobra, <1 falta)
+ *   - Florins             = abates + bônus de vitória
+ */
+(function (root, factory) {
+  const mod = factory();
+  if (typeof module === 'object' && module.exports) module.exports = mod;
+  else root.TD_MODEL = mod;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // dano por segundo de um herói (com chances de disparo duplo, alvos extras e área)
+  function heroDps(h) {
+    let d = h.damage / h.interval;
+    d *= 1 + (h.doubleShot || 0);
+    d *= 1 + (h.extraTargets || 0);
+    if (h.splash > 0) d *= 1 + Math.min(2, h.splash / 45) * 0.7; // atinge outros na área (70% do dano)
+    return d;
+  }
+
+  // fontes de dano do time: { nome, dps, golpe, perfura }
+  function damageSources(CFG, stats, loadout, duration) {
+    const src = [];
+    const heroIds = Object.keys(loadout.heroes || {}).filter((id) => loadout.heroes[id] > 0);
+    let heroCount = 0, heroDpsSum = 0;
+    heroIds.forEach((id) => {
+      const h = stats.heroes[id], n = loadout.heroes[id];
+      heroCount += n; heroDpsSum += heroDps(h) * n;
+      src.push({ name: 'herois', id, dps: heroDps(h) * n, hit: h.damage, pierce: 0 });
+    });
+    const a = stats.aim;
+    const aimTargets = 1.4 * Math.pow(a.radius / CFG.aim.radius, 2) * 0.8 + 0.2; // mais área = mais alvos por pulso
+    src.push({ name: 'mira', dps: a.damage / a.interval * (1 + a.critChance * (a.critMult - 1)) * aimTargets, hit: a.damage, pierce: a.pierce });
+    const pw = stats.powers, own = loadout.powers || {};
+    if (own.raio) {
+      let sum = 0, f = 1;
+      for (let i = 0; i < Math.round(pw.raio.chains); i++) { sum += f; f *= pw.raio.falloff; }
+      src.push({ name: 'poderes', id: 'raio', dps: pw.raio.damage * sum / pw.raio.cooldown, hit: pw.raio.damage, pierce: 0 });
+    }
+    if (own.gelo) src.push({ name: 'poderes', id: 'gelo', dps: pw.gelo.dps * pw.gelo.duration * 4 / pw.gelo.cooldown, hit: pw.gelo.dps, pierce: 0 });
+    if (own.meteoro) src.push({ name: 'poderes', id: 'meteoro', dps: pw.meteoro.damage * 4 / pw.meteoro.cooldown, hit: pw.meteoro.damage, pierce: 0 });
+    // Taberna: heróis extras em média (entram após firstDelay, 1 a cada interval, até max; ~60% do tempo vivos)
+    const tv = stats.tavern;
+    let tavernAvg = 0;
+    if (tv && tv.unlocked && heroCount > 0) {
+      tavernAvg = Math.min(tv.max, Math.max(0, duration - tv.firstDelay) / tv.interval) * 0.6;
+      src.push({ name: 'taberna', dps: heroDpsSum / heroCount * tavernAvg, hit: 25, pierce: 0 });
+    }
+    return { src, heroCount, tavernAvg };
+  }
+
+  function analyze(opts) {
+    const { CFG, P, BOT } = opts;
+    const levels = opts.levels || 50;
+    const eff = opts.efficiency == null ? 0.3 : opts.efficiency;
+    const save = P.defaultSave();
+    const rows = [];
+    let cum = 0, spentTotal = 0;
+    for (let L = 1; L <= levels; L++) {
+      const stats = P.computeStats(save);
+      const pts = P.summonPoints(L, stats);
+      const lo = BOT.autoLoadout(pts, stats);
+      const lv = P.generateLevel(L, P.makeRng(L * 101)); // mesmo sorteio da tela de preparação
+      const last = lv.spawns.length ? lv.spawns[lv.spawns.length - 1].t : 0;
+      const duration = last + 12; // tempo para os últimos chegarem e caírem
+      const { src, heroCount, tavernAvg } = damageSources(CFG, stats, lo, duration);
+      const totalDps = src.reduce((s, x) => s + x.dps, 0);
+      // fator de armadura: dano efetivo médio contra uma armadura, ponderado pelo dps de cada fonte
+      const armorEff = (armor) => src.reduce((s, x) => s + x.dps * Math.max(0.25, 1 - Math.max(0, armor - x.pierce) / Math.max(1, x.hit)), 0) / Math.max(1e-9, totalDps);
+      let hp = 0, ehp = 0, killF = 0, enemyDps = 0, bosses = 0;
+      lv.spawns.forEach((s) => {
+        const d = CFG.enemies[s.type];
+        const boss = !!d.boss;
+        if (boss) bosses++;
+        const h = d.hp * lv.hpMult * (boss ? CFG.levels.bossHpMult : 1);
+        hp += h;
+        ehp += h / armorEff(d.armor);
+        killF += d.reward * lv.rewardMult * stats.florimMult;
+        enemyDps += d.damage * lv.dmgMult * (boss ? CFG.levels.bossDmgMult : 1) / d.interval;
+      });
+      const victory = P.victoryReward(L, stats, true);
+      const gained = Math.round(killF + victory);
+      const teamForce = totalDps * duration * eff;
+      const parts = {};
+      src.forEach((x) => { parts[x.name] = (parts[x.name] || 0) + x.dps * duration * eff; });
+      // ganha os Florins e gasta como o bot
+      save.florins += gained;
+      cum += gained;
+      const had = Object.assign({}, save.ranks);
+      const before = save.florins;
+      BOT.spendFlorins(P, save);
+      spentTotal += before - save.florins;
+      const unlocks = CFG.tree.filter((n) => n.max === 1 && save.ranks[n.id] && !had[n.id]).map((n) => n.name);
+      save.cleared[L] = true;
+      save.unlockedLevel = L + 1;
+      rows.push({
+        L, boss: P.isBossLevel(L), bosses, enemies: lv.spawns.length, waves: lv.waves, duration,
+        enemyHp: hp, enemyForce: ehp, enemyDps, teamDps: totalDps, teamForce, parts, ratio: teamForce / ehp,
+        points: pts, heroes: heroCount, tavernAvg, killFlorins: Math.round(killF), victory, gained, cum, spent: spentTotal,
+        unlocks, ranksTotal: Object.values(save.ranks).reduce((s, x) => s + x, 0),
+      });
+    }
+    return rows;
+  }
+
+  return { analyze, heroDps };
+});
+</script>
+<script>
+(function () {
+  'use strict';
+  const CFG = window.TD_CONFIG, P = window.TD_PROGRESS, BOT = window.TD_BOT, M = window.TD_MODEL, ENGINE = window.TD_ENGINE;
+  const ORIG = JSON.parse(JSON.stringify(CFG));
+  const fmt = (n, d) => (n == null || isNaN(n) ? '–' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d || 0 }));
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- parâmetros editáveis ----------
+  const node = (id) => CFG.tree.find((n) => n.id === id);
+  const PARAMS = [
+    ['Modelo', [
+      ['model.levels', 'Níveis no gráfico', 1, 'de 1 até 100'],
+      ['model.efficiency', 'Eficiência do time', 0.05, 'fração do dano que acerta (calibrado: 0,6)'],
+    ]],
+    ['Invasores', [
+      ['levels.baseThreat', 'Ameaça base', 1, 'tamanho da 1ª onda do nível 1'],
+      ['levels.threatLinear', 'Crescimento linear', 0.005, 'ameaça +x por nível'],
+      ['levels.threatQuad', 'Crescimento quadrático', 0.0001, 'acelera no fim da campanha'],
+      ['levels.waveThreatStep', 'Aumento por onda', 0.01, 'cada onda do nível fica x maior'],
+      ['levels.hpGrowth', 'Vida por nível', 0.005, 'multiplicador composto'],
+      ['levels.dmgGrowth', 'Dano por nível', 0.005, 'multiplicador composto'],
+      ['levels.wavesBase', 'Ondas no início', 1, ''],
+      ['levels.wavesEvery', 'Nova onda a cada N níveis', 1, ''],
+      ['levels.wavesMax', 'Máximo de ondas', 1, ''],
+      ['levels.bossHpMult', 'Chefão: vida ×', 0.1, ''],
+      ['levels.bossDmgMult', 'Chefão: dano ×', 0.1, ''],
+    ]],
+    ['Economia', [
+      ['economy.victoryBase', 'Vitória: base', 1, 'Florins por vencer'],
+      ['economy.victoryPerLevel', 'Vitória: por nível', 1, ''],
+      ['levels.rewardGrowth', 'Florins por abate (crescimento)', 0.005, 'multiplicador composto por nível'],
+      ['tree.costMult', 'Custo da Evolução ×', 0.05, 'multiplica o custo de todos os nós'],
+    ]],
+    ['Convocação e mira', [
+      ['summon.basePoints', 'Pontos de convocação base', 1, ''],
+      ['summon.pointsPerLevel', 'Pontos por nível', 0.05, ''],
+      ['aim.damage', 'Mira: dano', 1, ''],
+      ['aim.interval', 'Mira: intervalo (s)', 0.05, ''],
+      ['aim.radius', 'Mira: raio', 1, ''],
+    ]],
+    ['Taberna', [
+      ['tavern.interval', 'Intervalo (s)', 1, 'tempo entre heróis'],
+      ['tavern.max', 'Heróis ao mesmo tempo', 1, 'antes de "Mais Mesas"'],
+      ['tavern.firstDelay', 'Primeiro herói (s)', 1, ''],
+      ['tree.tav_unlock.cost', 'Custo do desbloqueio', 10, ''],
+      ['tree.tav_rodada.cost', 'Rodada da Casa: custo', 10, ''],
+      ['tree.tav_mesas.cost', 'Mais Mesas: custo', 10, ''],
+    ]],
+    ['Heróis (base)', ['barbaro', 'arqueiro', 'anao', 'elfo', 'mago'].flatMap((id) => [
+      [`heroes.${id}.damage`, `${CFG.heroes[id].icon} ${CFG.heroes[id].name}: dano`, 1, ''],
+      [`heroes.${id}.hp`, `${CFG.heroes[id].icon} ${CFG.heroes[id].name}: vida`, 5, ''],
+      [`heroes.${id}.cost`, `${CFG.heroes[id].icon} ${CFG.heroes[id].name}: custo (pontos)`, 1, ''],
+    ])],
+    ['Invasores (base)', Object.keys(CFG.enemies).flatMap((id) => [
+      [`enemies.${id}.hp`, `${CFG.enemies[id].icon} ${CFG.enemies[id].name}: vida`, 5, ''],
+      [`enemies.${id}.reward`, `${CFG.enemies[id].icon} ${CFG.enemies[id].name}: Florins`, 1, ''],
+    ])],
+  ];
+  const MODEL_DEFAULT = { levels: 50, efficiency: 0.6 };
+  const MODEL = Object.assign({}, MODEL_DEFAULT);
+  const DEFAULTS = {};
+  const values = {};
+  const getPath = (path) => {
+    const parts = path.split('.');
+    if (parts[0] === 'model') return MODEL[parts[1]];
+    if (parts[0] === 'tree' && parts[1] === 'costMult') return 1;
+    if (parts[0] === 'tree') return node(parts[1]) ? ORIG.tree.find((n) => n.id === parts[1])[parts[2]] : NaN;
+    return parts.reduce((o, k) => o[k], ORIG);
+  };
+  function applyParams() {
+    // volta ao original e aplica os valores editados
+    Object.assign(MODEL, MODEL_DEFAULT);
+    Object.keys(ORIG).forEach((k) => { if (k !== 'tree') CFG[k] = JSON.parse(JSON.stringify(ORIG[k])); });
+    CFG.tree.forEach((n, i) => { n.cost = ORIG.tree[i].cost; });
+    Object.entries(values).forEach(([path, v]) => {
+      const parts = path.split('.');
+      if (parts[0] === 'model') { MODEL[parts[1]] = v; return; }
+      if (parts[0] === 'tree') return;
+      let o = CFG;
+      for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+      o[parts[parts.length - 1]] = v;
+    });
+    const mult = values['tree.costMult'] != null ? values['tree.costMult'] : 1;
+    CFG.tree.forEach((n, i) => {
+      const own = values[`tree.${n.id}.cost`];
+      n.cost = Math.round((own != null ? own : ORIG.tree[i].cost) * mult);
+    });
+  }
+  function buildParams() {
+    const box = $('params');
+    box.innerHTML = '';
+    PARAMS.forEach(([group, list], gi) => {
+      const d = document.createElement('details');
+      if (gi < 5) d.open = true;
+      d.innerHTML = `<summary>${group}</summary>`;
+      list.forEach(([path, label, step, help]) => {
+        const v = getPath(path);
+        DEFAULTS[path] = v;
+        const row = document.createElement('div');
+        row.className = 'param';
+        row.innerHTML = `<label for="p_${path}">${label}${help ? `<small>${help}</small>` : ''}</label><input id="p_${path}" type="number" step="${step}" value="${v}">`;
+        const inp = row.querySelector('input');
+        inp.addEventListener('input', () => {
+          const x = parseFloat(inp.value);
+          if (isNaN(x)) return;
+          if (Math.abs(x - DEFAULTS[path]) < 1e-12) delete values[path]; else values[path] = x;
+          inp.classList.toggle('changed', values[path] != null);
+          schedule();
+        });
+        d.appendChild(row);
+      });
+      box.appendChild(d);
+    });
+  }
+  $('reset').onclick = () => { Object.keys(values).forEach((k) => delete values[k]); sim = null; buildParams(); schedule(); };
+
+  function exportText() {
+    const keys = Object.keys(values).filter((k) => !k.startsWith('model.'));
+    if (!keys.length) return 'Nenhuma mudança (valores atuais do jogo).';
+    return 'Mudanças de balanceamento (config.js):\n' + keys.map((k) => `  ${k}: ${DEFAULTS[k]} → ${values[k]}`).join('\n');
+  }
+
+  // ---------- gráficos (SVG feito à mão) ----------
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v)); if (text != null) e.textContent = text; return e; };
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+  const short = (v) => v >= 1e6 ? fmt(v / 1e6, 1) + 'M' : v >= 1e3 ? fmt(v / 1e3, v >= 1e4 ? 0 : 1) + 'k' : fmt(v, v < 10 && v % 1 ? 1 : 0);
+
+  function frame(svg, W, H, pad, rows) {
+    svg.innerHTML = '';
+    const n = rows.length;
+    const x0 = pad.l, x1 = W - pad.r, bw = (x1 - x0) / n;
+    const xc = (i) => x0 + bw * (i + 0.5);
+    // fases (faixas alternadas) e rótulos
+    const every = CFG.levels.bossEvery;
+    const step = n > 60 ? 4 : n > 30 ? 2 : 1;
+    for (let i = 0; i < n; i += every) {
+      const ph = Math.floor(i / every);
+      if (ph % 2 === 0) svg.appendChild(el('rect', { x: x0 + bw * i, y: pad.t, width: bw * Math.min(every, n - i), height: H - pad.t - pad.b, fill: 'rgba(255,255,255,0.025)' }));
+      if (ph % step === 0) svg.appendChild(el('text', { x: x0 + bw * (i + Math.min(every, n - i) / 2), y: H - pad.b + 26, 'text-anchor': 'middle' }, `F${ph + 1}`));
+    }
+    const lstep = n > 60 ? 10 : n > 30 ? 5 : n > 15 ? 3 : 1;
+    rows.forEach((r, i) => { if ((i + 1) % lstep === 0 || i === 0) svg.appendChild(el('text', { x: xc(i), y: H - pad.b + 13, 'text-anchor': 'middle' }, r.L)); });
+    svg.appendChild(el('text', { x: x0 - 34, y: H - pad.b + 13 }, 'nível'));
+    svg.appendChild(el('text', { x: x0 - 34, y: H - pad.b + 26 }, 'fase'));
+    return { x0, x1, bw, xc, yTop: pad.t, yBot: H - pad.b };
+  }
+
+  function chart1(rows) {
+    const svg = $('chart1'), W = 1000, H = 420, pad = { l: 58, r: 58, t: 62, b: 34 };
+    const f = frame(svg, W, H, pad, rows);
+    const maxF = niceMax(Math.max(...rows.map((r) => Math.max(r.gained, r.cum / 10))));
+    const yF = (v) => f.yBot - (v / maxF) * (f.yBot - f.yTop);
+    for (let k = 0; k <= 4; k++) {
+      const v = maxF * k / 4, y = yF(v);
+      svg.appendChild(el('line', { x1: f.x0, x2: f.x1, y1: y, y2: y, stroke: css('--grid') }));
+      svg.appendChild(el('text', { x: f.x0 - 6, y: y + 4, 'text-anchor': 'end' }, short(v)));
+    }
+    svg.appendChild(el('text', { x: 6, y: f.yTop - 8 }, '💰 Florins'));
+    rows.forEach((r, i) => svg.appendChild(el('rect', { x: f.xc(i) - f.bw * 0.38, y: yF(r.gained), width: f.bw * 0.76, height: f.yBot - yF(r.gained), fill: r.boss ? css('--bar-boss') : css('--bar'), opacity: 0.85 })));
+    // acumulado ÷ 10
+    svg.appendChild(el('polyline', { points: rows.map((r, i) => `${f.xc(i)},${yF(r.cum / 10)}`).join(' '), fill: 'none', stroke: css('--gold'), 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }));
+    // forças em escala log (eixo direito)
+    const all = rows.flatMap((r) => [r.enemyForce, r.teamForce]).filter((v) => v > 0);
+    const lo = Math.pow(10, Math.floor(Math.log10(Math.min(...all)))), hi = Math.pow(10, Math.ceil(Math.log10(Math.max(...all))));
+    const yL = (v) => f.yBot - (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * (f.yBot - f.yTop);
+    for (let d = lo; d <= hi; d *= 10) svg.appendChild(el('text', { x: f.x1 + 6, y: yL(d) + 4 }, short(d)));
+    svg.appendChild(el('text', { x: W - 6, y: f.yTop - 8, 'text-anchor': 'end' }, 'força (log)'));
+    [['enemyForce', '--enemy'], ['teamForce', '--team']].forEach(([k, c]) => {
+      svg.appendChild(el('polyline', { points: rows.map((r, i) => `${f.xc(i)},${yL(r[k])}`).join(' '), fill: 'none', stroke: css(c), 'stroke-width': 2.2 }));
+    });
+    // desbloqueios
+    // etiquetas em 3 alturas alternadas para não sobrepor
+    let lane = 0;
+    rows.forEach((r, i) => r.unlocks.forEach((u) => {
+      const y = 14 + (lane++ % 3) * 13;
+      svg.appendChild(el('line', { x1: f.xc(i), x2: f.xc(i), y1: y + 3, y2: f.yBot, stroke: 'rgba(255,211,42,0.25)', 'stroke-dasharray': '2 3' }));
+      svg.appendChild(el('text', { x: f.xc(i) + 2, y, style: 'fill:' + css('--gold') }, '🔓 ' + u.replace(/^(Convocar|Desbloquear) /, '')));
+    }));
+    hover(svg, f, rows);
+  }
+
+  function chart2(rows) {
+    const svg = $('chart2'), W = 1000, H = 260, pad = { l: 58, r: 58, t: 14, b: 34 };
+    const f = frame(svg, W, H, pad, rows);
+    const maxR = Math.max(2.5, Math.ceil(Math.max(...rows.map((r) => r.ratio)) * 2) / 2);
+    const y = (v) => f.yBot - Math.min(v, maxR) / maxR * (f.yBot - f.yTop);
+    const band = (a, b, c) => svg.appendChild(el('rect', { x: f.x0, width: f.x1 - f.x0, y: y(b), height: y(a) - y(b), fill: c }));
+    band(0, 0.9, 'rgba(255,107,90,0.13)'); band(0.9, 1.6, 'rgba(255,211,42,0.08)'); band(1.6, maxR, 'rgba(123,211,107,0.08)');
+    for (let v = 0; v <= maxR + 1e-9; v += 0.5) {
+      svg.appendChild(el('line', { x1: f.x0, x2: f.x1, y1: y(v), y2: y(v), stroke: v === 1 ? 'rgba(255,255,255,0.35)' : css('--grid') }));
+      svg.appendChild(el('text', { x: f.x0 - 6, y: y(v) + 4, 'text-anchor': 'end' }, fmt(v, 1)));
+    }
+    svg.appendChild(el('polyline', { points: rows.map((r, i) => `${f.xc(i)},${y(r.ratio)}`).join(' '), fill: 'none', stroke: css('--gold'), 'stroke-width': 2 }));
+    rows.forEach((r, i) => { if (r.boss) svg.appendChild(el('circle', { cx: f.xc(i), cy: y(r.ratio), r: 3, fill: css('--bar-boss') })); });
+    if (sim) {
+      const maxA = Math.max(3, ...sim.map((s) => (s && s.att) || 0));
+      const ya = (v) => f.yBot - 6 - (v - 1) / (maxA - 1) * (f.yBot - f.yTop - 12); // 1 tentativa = base
+      for (let a = 1; a <= maxA; a++) svg.appendChild(el('text', { x: f.x1 + 6, y: ya(a) + 4, style: 'fill:#8fd3ff' }, a + '×'));
+      sim.forEach((s, i) => { if (s && s.att && i < rows.length) svg.appendChild(el('circle', { cx: f.xc(i), cy: ya(s.att), r: 3.5, fill: '#8fd3ff', opacity: 0.9 })); });
+      svg.appendChild(el('text', { x: f.x1 - 6, y: f.yTop + 12, 'text-anchor': 'end', style: 'fill:#8fd3ff' }, '● tentativas no simulador (eixo da direita)'));
+    }
+    hover(svg, f, rows);
+  }
+
+  function chart3(rows) {
+    const svg = $('chart3'), W = 1000, H = 240, pad = { l: 58, r: 58, t: 14, b: 34 };
+    const f = frame(svg, W, H, pad, rows);
+    const keys = [['herois', '--hero'], ['mira', '--aim'], ['poderes', '--power'], ['taberna', '--tavern']];
+    const dps = rows.map((r) => keys.map(([k]) => (r.parts[k] || 0) / (r.duration * MODEL.efficiency)));
+    const maxV = niceMax(Math.max(...dps.map((a) => a.reduce((s, x) => s + x, 0))));
+    const y = (v) => f.yBot - v / maxV * (f.yBot - f.yTop);
+    for (let k = 0; k <= 4; k++) { const v = maxV * k / 4; svg.appendChild(el('line', { x1: f.x0, x2: f.x1, y1: y(v), y2: y(v), stroke: css('--grid') })); svg.appendChild(el('text', { x: f.x0 - 6, y: y(v) + 4, 'text-anchor': 'end' }, short(v))); }
+    svg.appendChild(el('text', { x: 6, y: 12 }, 'dano/s do time'));
+    rows.forEach((r, i) => {
+      let acc = 0;
+      dps[i].forEach((v, j) => {
+        if (v <= 0) return;
+        svg.appendChild(el('rect', { x: f.xc(i) - f.bw * 0.38, y: y(acc + v), width: f.bw * 0.76, height: y(acc) - y(acc + v), fill: css(keys[j][1]), opacity: 0.9 }));
+        acc += v;
+      });
+    });
+    hover(svg, f, rows);
+  }
+
+  // ---------- dica ao passar o mouse ----------
+  function hover(svg, f, rows) {
+    const tip = $('tip');
+    svg.onmousemove = (ev) => {
+      const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      const i = Math.floor((p.x - f.x0) / f.bw);
+      if (i < 0 || i >= rows.length) { tip.style.display = 'none'; return; }
+      const r = rows[i], s = sim && sim[i];
+      tip.innerHTML = `<b>Nível ${r.L}</b> (fase ${Math.ceil(r.L / CFG.levels.bossEvery)})${r.boss ? ' · 👑 chefão' : ''}<br>
+        ${r.enemies} invasores · ${r.waves} ondas · ${fmt(r.duration)}s<br>
+        💰 ganhos <b>${fmt(r.gained)}</b> (abates ${fmt(r.killFlorins)} + vitória ${fmt(r.victory)})<br>
+        💰 acumulado ${fmt(r.cum)} · gasto ${fmt(r.spent)}<br>
+        <span class="bad">Invasores ${short(r.enemyForce)}</span> · <span class="good">Time ${short(r.teamForce)}</span><br>
+        Folga <b>${fmt(r.ratio, 2)}</b> · ${r.heroes} heróis${r.tavernAvg ? ` + ${fmt(r.tavernAvg, 1)} da Taberna` : ''} · ${r.points} pts
+        ${s ? `<br><span style="color:#8fd3ff">Simulador: ${fmt(s.att, 2)} tentativas · torre ${fmt(s.tower * 100)}%</span>` : ''}
+        ${r.unlocks.length ? `<br>🔓 ${r.unlocks.join(', ')}` : ''}`;
+      tip.style.display = 'block';
+      tip.style.left = Math.min(ev.clientX + 14, innerWidth - 300) + 'px';
+      tip.style.top = (ev.clientY + 14) + 'px';
+    };
+    svg.onmouseleave = () => { tip.style.display = 'none'; };
+  }
+
+  function table(rows) {
+    const head = ['Nível', 'Invasores', 'Força inimigos', 'Força time', 'Folga', 'Heróis', 'Taberna', '💰 nível', '💰 acumulado', '💰 gasto', 'Simulador', 'Desbloqueios'];
+    $('table').innerHTML = `<thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r, i) => {
+      const s = sim && sim[i];
+      const cls = r.ratio < 0.9 ? 'bad' : r.ratio > 1.6 ? 'good' : 'warn';
+      return `<tr class="${r.boss ? 'boss' : ''}"><td>${r.L}${r.boss ? ' 👑' : ''}</td><td>${r.enemies}</td><td>${short(r.enemyForce)}</td><td>${short(r.teamForce)}</td>
+        <td class="${cls}">${fmt(r.ratio, 2)}</td><td>${r.heroes}</td><td>${r.tavernAvg ? fmt(r.tavernAvg, 1) : '–'}</td><td>${fmt(r.gained)}</td><td>${fmt(r.cum)}</td><td>${fmt(r.spent)}</td>
+        <td>${s ? `${fmt(s.att, 2)}× · ${fmt(s.tower * 100)}%` : '–'}</td><td style="text-align:left">${r.unlocks.join(', ')}</td></tr>`;
+    }).join('')}</tbody>`;
+  }
+
+  function kpis(rows) {
+    const normal = rows.filter((r) => !r.boss), boss = rows.filter((r) => r.boss);
+    const avg = (a, k) => a.reduce((s, r) => s + r[k], 0) / Math.max(1, a.length);
+    const tav = rows.find((r) => r.unlocks.some((u) => /Taberna/.test(u)));
+    const hard = rows.filter((r) => r.ratio < 0.9).length;
+    const items = [
+      [fmt(rows[rows.length - 1].cum), `Florins até o nível ${rows.length}`],
+      [fmt(avg(normal, 'ratio'), 2), 'Folga média (níveis normais)'],
+      [fmt(avg(boss, 'ratio'), 2), 'Folga média (chefões)'],
+      [hard, 'Níveis difíceis (folga < 0,9)'],
+      [tav ? 'nível ' + tav.L : '—', 'Compra da Taberna'],
+    ];
+    if (sim) {
+      const sa = (f) => { const a = sim.filter((s, i) => s && rows[i] && f(rows[i])); return a.length ? a.reduce((t, s) => t + s.att, 0) / a.length : NaN; };
+      items.push([fmt(sa((r) => r && !r.boss), 2) + ' / ' + fmt(sa((r) => r && r.boss), 2), 'Simulador: tentativas normais / chefões']);
+    }
+    $('kpis').innerHTML = items.map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+  }
+
+  // ---------- simulador real (motor do jogo + bot), em partes para não travar a página ----------
+  let sim = null, simToken = 0;
+  $('simrun').onclick = () => {
+    const token = ++simToken;
+    applyParams();
+    const levels = Math.max(1, Math.min(100, Math.round(MODEL.levels)));
+    const seeds = Math.max(1, Math.min(8, +$('simseeds').value || 2));
+    const profile = $('simprofile').value;
+    const acc = Array.from({ length: levels }, () => ({ att: [], tower: [] }));
+    sim = acc.map(() => null);
+    $('simrun').disabled = true;
+    let seed = 1, L = 1, save = null, rng = null, stuck = 0;
+    const DT = 1 / 30;
+    function playLevel(level) {
+      const stats = P.computeStats(save);
+      const lo = BOT.autoLoadout(P.summonPoints(level, stats), stats);
+      const game = new ENGINE.Game({ levelData: P.generateLevel(level, rng), stats, loadout: lo, rng, visual: false });
+      const bot = new BOT.AimBot(profile, rng);
+      while (game.state === 'running' && game.t < 900) { bot.tick(game, DT); game.update(DT); }
+      return game.result();
+    }
+    function step() {
+      if (token !== simToken) return;
+      const t0 = performance.now();
+      while (performance.now() - t0 < 40) {
+        if (seed > seeds) { finish(); return; }
+        if (!save) { save = P.defaultSave(); rng = P.makeRng(seed * 7919); L = 1; }
+        let won = false, n = 0, tower = 0;
+        while (!won && n < 8) {
+          n++;
+          const r = playLevel(L);
+          save.florins += r.florins + (r.won ? P.victoryReward(L, P.computeStats(save), !save.cleared[L]) : 0);
+          if (r.won) { won = true; save.cleared[L] = true; tower = r.towerPct; }
+          BOT.spendFlorins(P, save);
+        }
+        acc[L - 1].att.push(n);
+        if (won) acc[L - 1].tower.push(tower);
+        const a = acc[L - 1];
+        sim[L - 1] = { att: a.att.reduce((s, x) => s + x, 0) / a.att.length, tower: a.tower.length ? a.tower.reduce((s, x) => s + x, 0) / a.tower.length : 0 };
+        if (!won) stuck++;
+        L++;
+        if (!won || L > levels) { seed++; save = null; }
+        $('simstatus').textContent = `Campanha ${Math.min(seed, seeds)}/${seeds} · nível ${Math.min(L, levels)}/${levels}...`;
+      }
+      render(false);
+      setTimeout(step, 0);
+    }
+    function finish() {
+      $('simrun').disabled = false;
+      $('simstatus').textContent = `Pronto: ${seeds} campanha(s), perfil ${profile}. ${stuck ? `⚠️ ${stuck} travada(s) (8 tentativas sem vencer).` : 'Nenhuma travou.'} Mudou um parâmetro? Rode de novo.`;
+      render(false);
+    }
+    step();
+  };
+
+  // ---------- recalcular ----------
+  let rows = [], timer = null;
+  function schedule() { clearTimeout(timer); timer = setTimeout(() => render(true), 120); }
+  function render(recompute) {
+    if (recompute) {
+      applyParams();
+      rows = M.analyze({ CFG, P, BOT, levels: Math.max(1, Math.min(100, Math.round(MODEL.levels))), efficiency: MODEL.efficiency });
+      $('export').value = exportText();
+      if (sim && sim.length !== rows.length) sim = null;
+    }
+    kpis(rows); chart1(rows); chart2(rows); chart3(rows); table(rows);
+  }
+  buildParams();
+  render(true);
+})();
+</script>
+</body>
+</html>

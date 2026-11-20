@@ -34,6 +34,7 @@ www/                 o jogo (HTML5 Canvas, sem dependências, sem build)
   js/main.js         telas, toque, salvamento
   assets/            imagens (ver docs/ARTE.md)
 tools/simulate.js    simulador de balanceamento
+tools/balanceamento.html  página interativa de balanceamento (npm run balanceamento para gerar de novo)
 tools/serve.js       servidor local para testes
 docs/BALANCEAMENTO.md  metas, fórmulas, resultados e como ajustar
 docs/ARTE.md           prompts do Gemini e especificação das imagens
