@@ -193,13 +193,18 @@
     // objetos em pé, ordenados pela profundidade
     const list = this.trees.map((t) => ({ y: t.y, draw: () => this.drawSprite('tree', t.x, t.y, 0, false, false) }));
     const tw = game ? game.tower : { x: W / 2, y: H / 2, hitT: 0 };
-    list.push({ y: tw.y, draw: () => this.drawTower(tw) });
+    // quem é desenhado antes da torre está atrás dela; se ficar coberto, aparece em transparência por cima
+    let towerBox = null;
+    const behind = [];
+    list.push({ y: tw.y, draw: () => { towerBox = this.drawTower(tw); } });
     if (game) {
-      game.enemies.forEach((e) => list.push({ y: e.y, draw: () => this.drawUnit(e, e.type, e.def.boss) }));
-      game.heroes.forEach((h) => { if (!h.dead) list.push({ y: h.y, draw: () => this.drawUnit(h, h.id, false) }); });
+      const unit = (o, id, boss) => () => { const d = this.drawUnit(o, id, boss); if (!towerBox && d) behind.push(d); };
+      game.enemies.forEach((e) => list.push({ y: e.y, draw: unit(e, e.type, e.def.boss) }));
+      game.heroes.forEach((h) => { if (!h.dead) list.push({ y: h.y, draw: unit(h, h.id, false) }); });
     }
     list.sort((a, b) => a.y - b.y);
     list.forEach((o) => o.draw());
+    if (towerBox) this.drawGhosts(behind, towerBox);
 
     if (game) {
       game.pending.forEach((m) => this.drawMeteorFalling(m));
@@ -248,7 +253,24 @@
 
   Renderer.prototype.drawTower = function (t) {
     this.shadow(t.x + 8, t.y + 8, CFG.tower.radius + 8);
-    this.drawSprite('tower', t.x, t.y + CFG.tower.radius * 0.6, 0, false, t.hitT > 0);
+    return this.drawSprite('tower', t.x, t.y + CFG.tower.radius * 0.6, 0, false, t.hitT > 0);
+  };
+
+  // personagens atrás da torre: redesenha por cima em transparência ("raio-x"), só se a torre os cobre
+  Renderer.prototype.drawGhosts = function (list, tb) {
+    const ctx = this.ctx;
+    const tl = tb.x - tb.w / 2, tr = tb.x + tb.w / 2;
+    list.forEach((d) => {
+      const b = d.box;
+      const ul = b.x - b.w / 2, ur = b.x + b.w / 2;
+      const ox = Math.min(ur, tr) - Math.max(ul, tl);
+      const oy = Math.min(b.top + b.h, tb.top + tb.h) - Math.max(b.top, tb.top);
+      if (ox <= 0 || oy <= 0 || ox * oy < b.w * b.h * 0.25) return; // pouco coberto: não precisa
+      ctx.globalAlpha = 0.55;
+      this.drawSprite(d.id, d.o.x, d.o.y, d.bob, d.flip, false, d.frame);
+      ctx.globalAlpha = 1;
+      if (d.o.hp < d.o.maxHp) this.bar(b.x, b.top - 3, Math.max(8, Math.min(24, b.w)), d.o.hp / d.o.maxHp, d.o.def ? '#e84118' : '#4cd137');
+    });
   };
 
   Renderer.prototype.drawUnit = function (o, id, boss) {
@@ -258,7 +280,7 @@
     const bob = Math.abs(Math.sin(moving)) * 2;
     const flip = o.def ? o.face === -1 : o.face === -1;
     const box = this.drawSprite(id, o.x, o.y, bob, flip, o.hitT > 0, frame);
-    if (!box) return;
+    if (!box) return null;
     const ctx = this.ctx;
     if (o.slow > 0) { ctx.fillStyle = '#9fe8ff'; ctx.fillRect(R(box.x) - 1, box.top - 3, 1, 1); ctx.fillRect(R(box.x) + 1, box.top - 4, 1, 1); }
     if (o.stunT > 0) {
@@ -266,8 +288,15 @@
       ctx.fillStyle = '#ffe066';
       for (let i = 0; i < 3; i++) ctx.fillRect(R(box.x + Math.cos(a + i * 2.1) * 4), R(box.top - 2 + Math.sin(a + i * 2.1) * 1.5), 1, 1);
     }
+    if (o.tavern) { // caneca acima da cabeça: herói da Taberna
+      const mx = R(box.x) - 1, my = box.top - 7;
+      ctx.fillStyle = '#f5f0e0'; ctx.fillRect(mx, my, 3, 1);
+      ctx.fillStyle = '#e1a32a'; ctx.fillRect(mx, my + 1, 3, 3);
+      ctx.fillStyle = '#8a5a14'; ctx.fillRect(mx + 3, my + 2, 1, 1);
+    }
     if (boss) { ctx.fillStyle = '#ffd32a'; ctx.fillRect(R(box.x) - 2, box.top - 7, 5, 1); ctx.fillRect(R(box.x) - 2, box.top - 8, 1, 1); ctx.fillRect(R(box.x), box.top - 9, 1, 2); ctx.fillRect(R(box.x) + 2, box.top - 8, 1, 1); }
     if (o.hp < o.maxHp) this.bar(box.x, box.top - 3, Math.max(8, Math.min(24, box.w)), o.hp / o.maxHp, o.def ? '#e84118' : '#4cd137');
+    return { o, id, box, bob, flip, frame };
   };
 
   Renderer.prototype.bar = function (cx, y, w, pct, col) {
@@ -372,6 +401,17 @@
           const a = i * 1.047;
           ctx.fillRect(R(p.x + Math.cos(a) * k * 9), R(p.y + Math.sin(a) * k * 5), 2, 2);
         }
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 'tavern': { // caneca subindo da porta da torre
+        const p = cam.project(f.x, f.y, 26 + k * 34);
+        ctx.globalAlpha = Math.min(1, (1 - k) * 2);
+        const x = R(p.x) - 3, y = R(p.y);
+        ctx.fillStyle = '#3a2410'; ctx.fillRect(x - 1, y - 1, 9, 9);
+        ctx.fillStyle = '#f5f0e0'; ctx.fillRect(x, y, 6, 2);
+        ctx.fillStyle = '#e1a32a'; ctx.fillRect(x, y + 2, 6, 5);
+        ctx.fillStyle = '#c47f12'; ctx.fillRect(x + 6, y + 3, 1, 3);
         ctx.globalAlpha = 1;
         break;
       }

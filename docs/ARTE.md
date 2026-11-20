@@ -36,6 +36,9 @@ A luz vem sempre **da esquerda/de cima** (o placeholder já segue isso).
 ## Fase 1 — Cenário
 
 ### 1. `www/assets/tower.png` — Torre (prioridade)
+
+> Ao trocar a torre, ajuste `towerSprite.height`/`halfWidth` em `www/js/config.js` para a proporção
+> da imagem nova — eles definem a área escondida atrás da torre (ver [VISIBILIDADE.md](VISIBILIDADE.md)).
 ```
 Pixel art sprite of a medieval stone defense tower, 16-bit SNES style, three-quarter front view
 seen slightly from above, full tower visible from base to top: round stone body with visible

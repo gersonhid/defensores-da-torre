@@ -15,6 +15,25 @@
   const W = CFG.world.width, H = CFG.world.height;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+  // ---------- zona cega atrás da torre ----------
+  // Mesma matemática da câmera (js/camera.js), sem depender da tela: só a profundidade importa.
+  const V = CFG.view;
+  const Z_FAR = 1 / V.farScale;
+  const CAM_A = (V.bottom - V.top) / (1 - V.farScale);
+  const S_NEAR = CAM_A * (Z_FAR - 1) / (H * V.tilt);
+  const camZ = (y) => Z_FAR + (1 - Z_FAR) * (y / H);
+  const TS = CFG.towerSprite;
+  const towerFeetY = (tw) => tw.y + tw.r * 0.6;            // o sprite da torre é desenhado com o pé aqui
+  const unitHeight = (r) => r * 2 * V.spriteScale;         // altura visual de um personagem (sprites.js)
+  // meia largura (no chão) da faixa escondida na profundidade y
+  function blindHalfWidth(tw, y) { return TS.halfWidth * camZ(y) / camZ(towerFeetY(tw)); }
+
+  // ângulo (em volta da torre) da posição de um herói: só no arco visível (fora do setor de trás)
+  function homeAngle(frac, radius) {
+    const beta = Math.asin(Math.min(1, (TS.halfWidth + TS.sideMargin + radius) / CFG.heroDefaults.homeRadius));
+    return -Math.PI / 2 + beta + frac * (Math.PI * 2 - 2 * beta);
+  }
+
   function Game(opts) {
     this.rng = opts.rng || Math.random;
     this.visual = opts.visual !== false;
@@ -53,7 +72,8 @@
     for (let i = 0; i < nH; i++) {
       const id = list[i];
       const st = s.heroes[id];
-      const ang = (i / Math.max(1, nH)) * Math.PI * 2 - Math.PI / 2;
+      // distribuídos pelo arco visível: exclui o setor de trás da torre
+      const ang = homeAngle((i + 0.5) / Math.max(1, nH), st.radius);
       const home = {
         x: this.tower.x + Math.cos(ang) * CFG.heroDefaults.homeRadius,
         y: this.tower.y + Math.sin(ang) * CFG.heroDefaults.homeRadius,
@@ -63,6 +83,13 @@
         hp: st.hp, maxHp: st.hp, cd: this.rng() * st.interval, dead: false, respawnT: 0, target: null, face: 1,
         anim: 0,
       });
+    }
+    // Taberna: sorteio proporcional aos heróis convocados
+    this.tavern = null;
+    if (s.tavern && s.tavern.unlocked && nH > 0) {
+      const counts = {};
+      list.slice(0, nH).forEach((id) => { counts[id] = (counts[id] || 0) + 1; });
+      this.tavern = { t: s.tavern.firstDelay, pool: Object.entries(counts).map(([id, n]) => ({ id, w: n / nH })), made: 0, slot: 0 };
     }
     this.powers = {};
     // poder comprado = disponível a partida toda, com recarga. Começa pronto.
@@ -118,6 +145,7 @@
       h.dead = true;
       h.target = null;
       h.respawnT = this.stats.respawn;
+      if (h.tavern) h.gone = true; // herói da Taberna não renasce
       this.addFx({ kind: 'death', x: h.x, y: h.y, color: h.st.color, ttl: 0.6 });
     }
   };
@@ -126,6 +154,42 @@
     const eff = Math.max(amount * 0.25, amount - this.tower.armor);
     this.tower.hp -= eff;
     this.tower.hitT = 0.15;
+  };
+
+  // true se um personagem de raio r no ponto (x, y) fica mais da metade escondido atrás da torre
+  P.inBlindZone = function (x, y, r) {
+    const tw = this.tower;
+    const feet = towerFeetY(tw);
+    if (y >= feet) return false;                            // na frente da torre: sempre visível
+    const zf = camZ(feet), zu = camZ(y);
+    const rise = CAM_A / zf - CAM_A / zu;                   // quanto o pé dele sobe na tela (px)
+    const middle = rise + unitHeight(r) / 2 * (S_NEAR / zu); // altura do meio do corpo na tela
+    if (middle >= TS.height * (S_NEAR / zf)) return false;   // passa do topo da torre: visível
+    return Math.abs(x - tw.x) < blindHalfWidth(tw, y);
+  };
+
+  // para onde um invasor anda: em vez do centro da torre, um ponto na borda dela que fique visível.
+  // Quem vem por trás contorna pela lateral (não atravessa a zona cega).
+  P.approachPoint = function (e) {
+    const tw = this.tower;
+    const dx = e.x - tw.x, dy = e.y - tw.y;
+    const feet = towerFeetY(tw);
+    const side = dx > 0.5 ? 1 : dx < -0.5 ? -1 : (e.side || 1);
+    const hw = blindHalfWidth(tw, Math.min(e.y, feet));
+    if (e.y < feet && Math.abs(dx) < hw) {
+      // atrás da torre, dentro da faixa escondida: sai pela lateral (com folga) enquanto avança
+      return { x: tw.x + side * (hw + TS.sideMargin + e.r), y: e.y + (feet - e.y) * 0.35 };
+    }
+    // ponto da borda da torre (ao alcance do golpe) na direção do invasor
+    const rr = tw.r + e.r + Math.min(e.range, 20) * 0.5;
+    const d = Math.hypot(dx, dy) || 1;
+    let px = dx / d * rr, py = dy / d * rr;
+    if (tw.y + py < feet && Math.abs(px) < hw + TS.sideMargin) {
+      // cairia atrás da torre: ataca pela lateral, na altura do pé da torre (sempre visível)
+      py = feet - tw.y;
+      px = side * Math.sqrt(Math.max(0, rr * rr - py * py));
+    }
+    return { x: tw.x + px, y: tw.y + py };
   };
 
   P.enemiesNear = function (x, y, r) {
@@ -150,6 +214,7 @@
       hp, maxHp: hp, speed: def.speed, damage: def.damage * lv.dmgMult * (def.boss ? (CFG.levels.bossDmgMult || 1) : 1), interval: def.interval,
       range: def.range, armor: def.armor, reward: def.reward * lv.rewardMult, ranged: !!def.ranged,
       cd: def.interval * 0.5, slow: 0, slowT: 0, stunT: 0, dead: false, hitT: 0, anim: this.rng() * 6,
+      side: this.rng() < 0.5 ? -1 : 1,
     });
     this.spawned++;
   };
@@ -205,7 +270,9 @@
     Object.values(this.powers).forEach((p) => { if (p.cd > 0) p.cd -= dt; });
 
     this.updateAim(dt);
+    this.updateTavern(dt);
     this.heroes.forEach((h) => this.updateHero(h, dt));
+    if (this.heroes.some((h) => h.gone)) this.heroes = this.heroes.filter((h) => !h.gone);
     this.enemies.forEach((e) => this.updateEnemy(e, dt));
     this.updateZones(dt);
 
@@ -244,6 +311,34 @@
   P.currentWave = function () {
     const s = this.level.spawns[Math.min(this.spawnIdx, this.level.spawns.length - 1)];
     return s ? s.wave + 1 : 1;
+  };
+
+  // Taberna: enquanto houver vaga, a cada `interval` segundos entra um herói sorteado na proporção dos convocados
+  P.tavernAlive = function () { return this.heroes.filter((h) => h.tavern && !h.dead).length; };
+  P.updateTavern = function (dt) {
+    const tv = this.tavern;
+    if (!tv) return;
+    const st = this.stats.tavern;
+    if (this.tavernAlive() >= st.max) return;                       // sem vaga: relógio parado
+    tv.t -= dt;
+    if (tv.t > 0) return;
+    if (this.heroes.filter((h) => !h.dead).length >= CFG.heroDefaults.maxOnField) return; // campo cheio: espera
+    tv.t = st.interval;
+    let r = this.rng(), id = tv.pool[tv.pool.length - 1].id;
+    for (const p of tv.pool) { if (r < p.w) { id = p.id; break; } r -= p.w; }
+    const hs = this.stats.heroes[id];
+    // posição de guarda: alterna pelos lados do arco visível
+    const frac = [0.2, 0.8, 0.35, 0.65, 0.5][tv.slot++ % 5];
+    const ang = homeAngle(frac, hs.radius);
+    const tw = this.tower;
+    const home = { x: tw.x + Math.cos(ang) * CFG.heroDefaults.homeRadius, y: tw.y + Math.sin(ang) * CFG.heroDefaults.homeRadius };
+    this.heroes.push({
+      id, st: hs, x: tw.x, y: tw.y + tw.r + hs.radius, home, r: hs.radius, // sai pela porta da torre
+      hp: hs.hp, maxHp: hs.hp, cd: hs.interval, dead: false, respawnT: 0, target: null, face: 1, anim: 0, tavern: true,
+    });
+    tv.made++;
+    this.addFx({ kind: 'respawn', x: tw.x, y: tw.y + tw.r + hs.radius, ttl: 0.5 });
+    this.addFx({ kind: 'tavern', x: tw.x, y: tw.y + tw.r, hero: id, ttl: 1.6 });
   };
 
   P.updateAim = function (dt) {
@@ -298,7 +393,8 @@
     if (h.dead) {
       h.respawnT -= dt;
       if (h.respawnT <= 0) {
-        h.dead = false; h.hp = h.maxHp; h.x = this.tower.x; h.y = this.tower.y; h.cd = st.interval;
+        h.dead = false; h.hp = h.maxHp; h.cd = st.interval;
+        h.x = this.tower.x; h.y = this.tower.y + this.tower.r + h.r; // renasce na porta (frente), visível
         this.addFx({ kind: 'respawn', x: h.x, y: h.y, ttl: 0.5 });
       }
       return;
@@ -310,6 +406,13 @@
     const edge = dist(h, tg) - tg.r - h.r;
     if (edge > st.range) { this.moveTo(h, tg.x, tg.y, st.speed, dt); return; }
     h.face = tg.x > h.x ? 1 : -1;
+    // não fica parado atrás da torre: continua atacando, mas sai pela lateral
+    if (this.inBlindZone(h.x, h.y, h.r)) {
+      const tw = this.tower;
+      const side = h.x >= tw.x ? 1 : -1;
+      this.moveTo(h, tw.x + side * (blindHalfWidth(tw, h.y) + TS.sideMargin + h.r), h.y, st.speed, dt);
+      h.face = tg.x > h.x ? 1 : -1;
+    }
     if (h.cd > 0) return;
     h.cd = st.interval;
     this.heroAttack(h, tg);
@@ -354,7 +457,11 @@
     const dTower = dist(e, tw) - tw.r - e.r;
 
     if (e.ranged) {
-      if (dTower > e.range) { this.moveTo(e, tw.x, tw.y, speed, dt); return; }
+      if (dTower > e.range || this.inBlindZone(e.x, e.y, e.r)) {
+        const ap = this.approachPoint(e);
+        this.moveTo(e, ap.x, ap.y, speed, dt);
+        return;
+      }
       if (e.cd <= 0) {
         e.cd = e.interval;
         this.damageTower(e.damage);
@@ -378,7 +485,11 @@
       }
       return;
     }
-    if (dTower > e.range) { this.moveTo(e, tw.x, tw.y, speed, dt); return; }
+    if (dTower > e.range) {
+      const ap = this.approachPoint(e);
+      this.moveTo(e, ap.x, ap.y, speed, dt);
+      return;
+    }
     if (e.cd <= 0) {
       e.cd = e.interval;
       this.damageTower(e.damage);
@@ -414,6 +525,7 @@
       won: this.state === 'won',
       kills: this.kills,
       killsBy: this.killsBy,
+      tavernHeroes: this.tavern ? this.tavern.made : 0,
       total: this.totalEnemies,
       florins: Math.round(this.florins),
       towerPct: this.tower.hp / this.tower.maxHp,

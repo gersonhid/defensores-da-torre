@@ -33,6 +33,11 @@
 
     // ---------------- TORRE ----------------
     tower: { hp: 600, armor: 0, regen: 0, thorns: 0, radius: 48 },
+    // Tamanho da torre na TELA (unidades do mundo), usado para calcular a "zona cega" atrás dela:
+    // chão onde um personagem ficaria mais da metade escondido. Invasores contornam essa zona e
+    // os heróis não ficam parados nela. halfWidth = meia largura do corpo da torre; sideMargin = folga.
+    // Se a arte da torre mudar de proporção, ajuste aqui. Ver docs/VISIBILIDADE.md.
+    towerSprite: { height: 200, halfWidth: 48, sideMargin: 10 },
 
     // ---------------- MIRA DO JOGADOR ----------------
     // Pulso de dano em área a cada `interval` segundos na posição do dedo.
@@ -40,6 +45,13 @@
 
     // ---------------- HERÓIS ----------------
     heroDefaults: { leash: 310, respawn: 14, homeRadius: 105, maxOnField: 16 },
+
+    // ---------------- TABERNA ----------------
+    // Desbloqueada na Evolução. De `interval` em `interval` segundos um herói extra entra na batalha,
+    // sorteado na proporção dos heróis convocados (1 Bárbaro + 2 Arqueiros = 33% / 67%).
+    // max = heróis da Taberna vivos ao mesmo tempo; o relógio só anda enquanto houver vaga.
+    // Heróis da Taberna não renascem. Ver docs/TABERNA.md.
+    tavern: { unlocked: false, interval: 35, max: 1, firstDelay: 15 },
     // range = distância borda-a-borda. splash = raio de dano em área (70% nos secundários).
     heroes: {
       barbaro:  { name: 'Bárbaro',  icon: '🪓', color: '#c0392b', cost: 3, unlocked: true,
@@ -97,7 +109,8 @@
 
     // ---------------- BESTIÁRIO ----------------
     // Recompensa (Florins) coletada uma única vez quando o herói é desbloqueado ou o invasor é
-    // derrotado pela primeira vez. Total: 800 (heróis) + 2.080 (invasores). Ver docs/BESTIARIO.md.
+    // derrotado pela primeira vez, ou o poder é desbloqueado.
+    // Total: 800 (heróis) + 650 (poderes) + 2.080 (invasores) = 3.530. Ver docs/BESTIARIO.md.
     bestiary: {
       heroes: {
         barbaro:  { reward: 50,  desc: 'Guerreiro das montanhas do norte. Segura a linha de frente com o machado e não recua.' },
@@ -105,6 +118,11 @@
         anao:     { reward: 150, desc: 'Forjado nas minas. A armadura pesada aguenta golpes e o martelo atinge vários inimigos.' },
         elfo:     { reward: 200, desc: 'Arqueiro veloz de alcance enorme. Dispara sem parar, mas sofre contra armaduras.' },
         mago:     { reward: 300, desc: 'Estudioso das artes arcanas. Bolas de fogo em área, mas é frágil de perto.' },
+      },
+      powers: {
+        raio:    { reward: 150, desc: 'Um relâmpago cai do céu e salta de inimigo em inimigo, perdendo força a cada salto.' },
+        gelo:    { reward: 200, desc: 'Uma nevasca cobre a área: congela aos poucos e deixa os invasores lentos.' },
+        meteoro: { reward: 300, desc: 'Uma rocha em chamas cai do céu e esmaga tudo em volta. Demora um instante para chegar.' },
       },
       enemies: {
         goblin:       { reward: 30,  desc: 'Pequeno, numeroso e covarde. Sozinho não assusta; em bando derruba muralhas.' },
@@ -162,6 +180,7 @@
       { id: 'mago',     name: 'Mago',     icon: '🧙' },
       { id: 'arcano',   name: 'Arcano',   icon: '🔮' },
       { id: 'economia', name: 'Tesouro',  icon: '💰' },
+      { id: 'taberna',  name: 'Taberna',  icon: '🍺' },
     ],
     tree: [
       // TORRE
@@ -193,6 +212,13 @@
         max: 10, cost: 150, growth: 1.42, req: [['cmd_estrategista', 3]], fx: [{ p: 'heroes.*.hp', m: 0.06 }] },
       { id: 'cmd_lideranca', branch: 'comando', name: 'Liderança', desc: '+6% dano de todos os heróis', pos: [5, 5],
         max: 10, cost: 180, growth: 1.42, req: [['cmd_estrategista', 4]], fx: [{ p: 'heroes.*.damage', m: 0.06 }] },
+      // TABERNA
+      { id: 'tav_unlock', branch: 'taberna', name: 'Taberna', desc: 'Um herói extra entra na batalha de tempos em tempos (proporção dos convocados)', pos: [6, 6],
+        max: 1, cost: 1200, growth: 1, req: [['cmd_vitalidade', 2]], fx: [{ p: 'tavern.unlocked', set: true }] },
+      { id: 'tav_rodada', branch: 'taberna', name: 'Rodada da Casa', desc: '-8% tempo entre heróis da Taberna', pos: [7, 6],
+        max: 6, cost: 220, growth: 1.45, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.interval', m: -0.08 }] },
+      { id: 'tav_mesas', branch: 'taberna', name: 'Mais Mesas', desc: '+1 herói da Taberna ao mesmo tempo', pos: [7, 7],
+        max: 3, cost: 600, growth: 1.8, req: [['tav_unlock', 1]], fx: [{ p: 'tavern.max', a: 1 }] },
       // BÁRBARO
       { id: 'bar_forca', branch: 'barbaro', name: 'Força Bruta', desc: '+10% dano do Bárbaro', pos: [0, 4],
         max: 12, cost: 60, growth: 1.35, fx: [{ p: 'heroes.barbaro.damage', m: 0.1 }] },

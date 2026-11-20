@@ -67,6 +67,7 @@
       bonusPoints: 0,
       heroes: clone(CFG.heroes),
       powers: clone(CFG.powers),
+      tavern: clone(CFG.tavern),
       florimMult: 1,
       victoryMult: 1,
     };

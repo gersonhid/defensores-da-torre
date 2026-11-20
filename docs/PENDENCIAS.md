@@ -151,6 +151,8 @@ Guia: [ANDROID.md](ANDROID.md), seção 4.
   - [x] Servidor no Railway e site publicados com a indicação (19/11/2026)
   - [ ] 🟡 **[Você]** Testar no celular: compartilhar, WhatsApp, copiar link e convite entre dois aparelhos
   - [ ] 🔴 **[Claude]** Ao publicar na Play Store: `PLAY_PUBLICADO = true` em `www/convite.html`
+- [x] Taberna: heróis extras durante a partida — ver [TABERNA.md](TABERNA.md)
+- [x] Ninguém escondido atrás da torre — ver [VISIBILIDADE.md](VISIBILIDADE.md)
 - [x] Bestiário com recompensa por descoberta — ver [BESTIARIO.md](BESTIARIO.md)
 - [ ] 🟢 Conquistas / estrelas por nível
 - [ ] 🟢 Tradução para inglês

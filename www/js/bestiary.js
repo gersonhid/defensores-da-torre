@@ -1,6 +1,6 @@
 /*
- * Bestiário: os 5 heróis e todos os invasores, com retrato, descrição e recompensa por descoberta.
- *  - Herói: descoberto quando é desbloqueado na Evolução.
+ * Bestiário: os 5 heróis, os 3 poderes e todos os invasores, com retrato, descrição e recompensa por descoberta.
+ *  - Herói e poder: descobertos quando são desbloqueados na Evolução.
  *  - Invasor: descoberto quando é derrotado pela 1ª vez (save.bestiary.kills).
  * Cada descoberta dá Florins uma única vez (save.bestiary.claimed). Valores em config.js → bestiary.
  * Ver docs/BESTIARIO.md.
@@ -22,6 +22,7 @@
 
   const ENTRIES = []
     .concat(Object.keys(CFG.bestiary.heroes).map((id) => ({ key: 'h_' + id, id, kind: 'hero', def: CFG.heroes[id], info: CFG.bestiary.heroes[id] })))
+    .concat(Object.keys(CFG.bestiary.powers).map((id) => ({ key: 'p_' + id, id, kind: 'power', def: CFG.powers[id], info: CFG.bestiary.powers[id] })))
     .concat(Object.keys(CFG.bestiary.enemies).map((id) => ({
       key: 'e_' + id, id, kind: CFG.enemies[id].boss ? 'boss' : 'enemy', def: CFG.enemies[id], info: CFG.bestiary.enemies[id],
     })));
@@ -35,6 +36,7 @@
 
   function discovered(save, entry, stats) {
     if (entry.kind === 'hero') return !!(stats || P.computeStats(save)).heroes[entry.id].unlocked;
+    if (entry.kind === 'power') return !!(stats || P.computeStats(save)).powers[entry.id].unlocked;
     return (data(save).kills[entry.id] || 0) > 0;
   }
 
@@ -75,17 +77,28 @@
     return total;
   }
 
+  // ícone (emoji) desenhado pequeno e ampliado sem suavizar: vira "pixel art" (poderes, ou arte carregando)
+  function iconImage(icon) {
+    const c = document.createElement('canvas');
+    c.width = 22; c.height = 22;
+    const g = c.getContext('2d');
+    g.font = '18px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(icon, 11, 12);
+    return c;
+  }
+
   // desenha o retrato (sprite do jogo ampliado em pixels inteiros); escondido = silhueta escura
-  function drawPortrait(canvas, id, hidden) {
+  function drawPortrait(canvas, entry, hidden) {
     const g = canvas.getContext('2d');
     g.clearRect(0, 0, canvas.width, canvas.height);
-    const spr = SPR && SPR.store.sprites[id];
-    if (!spr) return false; // arte ainda carregando
-    const img = spr.frames[0];
+    const spr = entry.kind !== 'power' && SPR && SPR.store.sprites[entry.id];
+    const img = spr ? spr.frames[0] : iconImage(entry.def.icon);
     const scale = Math.max(1, Math.floor(Math.min(canvas.width * 0.9 / img.width, canvas.height * 0.9 / img.height)));
     const w = img.width * scale, h = img.height * scale;
     g.imageSmoothingEnabled = false;
-    g.drawImage(img, Math.round((canvas.width - w) / 2), Math.round(canvas.height - h - canvas.height * 0.04), w, h);
+    const y = spr ? canvas.height - h - canvas.height * 0.04 : (canvas.height - h) / 2; // personagem no chão; ícone centralizado
+    g.drawImage(img, Math.round((canvas.width - w) / 2), Math.round(y), w, h);
     if (hidden) {
       g.globalCompositeOperation = 'source-in';
       g.fillStyle = '#0d0906';

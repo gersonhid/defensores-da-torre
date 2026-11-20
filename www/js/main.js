@@ -290,16 +290,7 @@
   let besSel = null;
   $('btn-bestiary').onclick = () => show('bestiary', true);
 
-  function portrait(canvas, entry, hidden) {
-    if (BES.drawPortrait(canvas, entry.id, hidden)) return;
-    // arte ainda carregando: usa o ícone
-    const g = canvas.getContext('2d');
-    g.font = Math.round(canvas.height * 0.6) + 'px sans-serif';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.globalAlpha = hidden ? 0.25 : 1;
-    g.fillText(entry.def.icon, canvas.width / 2, canvas.height / 2);
-    g.globalAlpha = 1;
-  }
+  const portrait = (canvas, entry, hidden) => BES.drawPortrait(canvas, entry, hidden);
 
   function renderBestiary() {
     const stats = P.computeStats(save);
@@ -308,7 +299,8 @@
     grid.innerHTML = '';
     const groups = [
       ['Heróis', BES.ENTRIES.filter((e) => e.kind === 'hero')],
-      ['Invasores', BES.ENTRIES.filter((e) => e.kind !== 'hero')],
+      ['Poderes', BES.ENTRIES.filter((e) => e.kind === 'power')],
+      ['Invasores', BES.ENTRIES.filter((e) => e.kind === 'enemy' || e.kind === 'boss')],
     ];
     groups.forEach(([title, list]) => {
       const found = list.filter((e) => BES.discovered(save, e, stats)).length;
@@ -328,7 +320,7 @@
         portrait(c, e, !disc);
         const name = document.createElement('span');
         name.className = 'bes-name';
-        name.textContent = disc || e.kind === 'hero' ? e.def.name : '???';
+        name.textContent = disc || e.kind === 'hero' || e.kind === 'power' ? e.def.name : '???';
         b.append(c, name);
         if (BES.claimable(save, e, stats)) {
           const tag = document.createElement('span');
@@ -353,10 +345,20 @@
     const e = BES.ENTRIES.find((x) => x.key === besSel);
     const d = $('bes-detail');
     const disc = BES.discovered(save, e, stats);
-    const showName = disc || e.kind === 'hero';
-    const kindTag = e.kind === 'hero' ? '🛡️ Herói' : e.kind === 'boss' ? '👑 Chefão' : '⚔️ Invasor';
+    const showName = disc || e.kind === 'hero' || e.kind === 'power';
+    const kindTag = { hero: '🛡️ Herói', power: '✨ Poder', boss: '👑 Chefão', enemy: '⚔️ Invasor' }[e.kind];
     let body;
-    if (disc) {
+    if (disc && e.kind === 'power') {
+      const p = stats.powers[e.id];
+      const fx = e.id === 'raio' ? `<li>⚡ Dano <b>${fmt(p.damage)}</b> · salta em <b>${Math.round(p.chains)}</b> alvos</li>`
+        : e.id === 'gelo' ? `<li>❄️ <b>${fmt(p.dps)}</b>/s por <b>${p.duration}s</b> · lentidão <b>${Math.round(p.slow * 100)}%</b></li><li>📏 Área <b>${fmt(p.radius)}</b></li>`
+          : `<li>☄️ Dano <b>${fmt(p.damage)}</b> · área <b>${fmt(p.radius)}</b></li>`;
+      body = `<p class="d-desc">${e.info.desc}</p>
+        <ul class="bes-stats">${fx}
+          <li>⏱️ Recarga <b>${p.cooldown.toFixed(1)}s</b> · ⭐ Custo <b>${p.cost}</b> pontos</li>
+        </ul>
+        <div class="d-req-t">Valores atuais, com a sua Evolução</div>`;
+    } else if (disc) {
       const s = e.kind === 'hero' ? stats.heroes[e.id] : e.def;
       const bossK = e.kind === 'boss' ? CFG.levels.bossHpMult : 1;
       const bossD = e.kind === 'boss' ? CFG.levels.bossDmgMult : 1;
@@ -373,7 +375,8 @@
     } else {
       body = `<p class="d-desc">${e.kind === 'hero'
         ? 'Ainda não se juntou aos defensores. Desbloqueie na <b>Evolução</b>.'
-        : `Ainda não foi derrotado. Aparece a partir do <b>nível ${BES.firstLevel[e.id]}</b>.`}</p>`;
+        : e.kind === 'power' ? 'Poder ainda bloqueado. Desbloqueie em <b>Evolução → Arcano</b>.'
+          : `Ainda não foi derrotado. Aparece a partir do <b>nível ${BES.firstLevel[e.id]}</b>.`}</p>`;
     }
     d.innerHTML = `
       <canvas id="bes-pic" class="bes-pic" width="128" height="128"></canvas>
@@ -427,7 +430,7 @@
     const types = [...new Set(lv.spawns.map((s) => s.type))];
     $('prep-title').textContent = `Nível ${L}` + (L > CAMPAIGN_LEVELS ? ' ♾️' : '');
     $('prep-info').innerHTML = `${lv.waves} ondas · ~${lv.spawns.length} invasores<br>` +
-      types.map((t) => `${CFG.enemies[t].icon} ${CFG.enemies[t].name}`).join(' · ');
+      types.map((t) => `${CFG.enemies[t].icon} ${CFG.enemies[t].name}`).join(' · ') + tavernInfo();
     $('prep-left').textContent = left;
     $('prep-total').textContent = total;
 
@@ -471,6 +474,16 @@
       pl.appendChild(div);
     });
     $('prep-start').disabled = heroCount() === 0 && !Object.keys(loadout.powers).length;
+  }
+  // chances da Taberna (proporção dos heróis convocados)
+  function tavernInfo() {
+    const tv = stats.tavern;
+    if (!tv || !tv.unlocked) return '';
+    const n = heroCount();
+    if (!n) return '<br>🍺 Taberna: convoque heróis para ela enviar reforços';
+    const parts = Object.entries(loadout.heroes).filter(([, c]) => c > 0)
+      .map(([id, c]) => `${stats.heroes[id].icon} ${Math.round(c / n * 100)}%`);
+    return `<br>🍺 Taberna: 1 herói a cada ${Math.round(tv.interval)}s (até ${Math.round(tv.max)}) · ${parts.join(' ')}`;
   }
   function btn(text, fn, disabled) {
     const b = document.createElement('button');
@@ -615,7 +628,7 @@
       const before = BES.pendingCount(save);
       if (P.buy(save, n.id)) {
         persist(); renderTree(true);
-        if (BES.pendingCount(save) > before) toast('📖 Novo herói no bestiário! Colete a recompensa no menu.');
+        if (BES.pendingCount(save) > before) toast('📖 Novo no bestiário! Colete a recompensa no menu.');
       }
     }, st === 'locked' || save.florins < cost);
     b.classList.add('primary');
@@ -705,6 +718,9 @@
     $('hud-tower-txt').textContent = `🏰 ${fmt(Math.max(0, t.hp))} / ${fmt(t.maxHp)}`;
     $('hud-wave').textContent = `Onda ${game.currentWave()}/${game.level.waves}`;
     $('hud-florins').textContent = fmt(game.florins);
+    const tv = game.tavern;
+    $('hud-tavern').classList.toggle('hidden', !tv);
+    if (tv) $('hud-tavern-t').textContent = game.tavernAlive() >= game.stats.tavern.max ? 'cheia' : Math.max(0, Math.ceil(tv.t)) + 's';
     document.querySelectorAll('.pw-btn').forEach((b) => {
       const p = game.powers[b.dataset.id];
       const k = Math.max(0, p.cd / p.cooldown);
@@ -765,6 +781,7 @@
       <div>Invasores abatidos: <b>${r.kills}</b> / ${r.total}</div>
       ${r.won ? `<div>Torre: <b>${Math.round(r.towerPct * 100)}%</b></div>` : ''}
       <div>Florins dos abates: 💰 ${fmt(r.florins)}</div>
+      ${r.tavernHeroes ? `<div>🍺 Heróis da Taberna: <b>${r.tavernHeroes}</b></div>` : ''}
       ${r.won ? `<div>Bônus de vitória${first ? '' : ' (repetição)'}: 💰 ${fmt(bonus)}</div>` : ''}
       <div class="big-gold">+ 💰 <span id="res-gain">${fmt(gained)}</span></div>
       ${fresh.length ? `<div class="res-new">📖 Novo no bestiário: <b>${fresh.map((id) => CFG.enemies[id].name).join(', ')}</b></div>` : ''}

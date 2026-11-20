@@ -40,6 +40,8 @@ docs/ARTE.md           prompts do Gemini e especificação das imagens
 docs/ANDROID.md         compilar o app Android (Capacitor + AdMob) e publicar na Play Store
 docs/ANUNCIOS.md       anúncios recompensados, fases/chefões e provedores (AdMob / H5)
 docs/PENDENCIAS.md     ★ checklist do que falta para publicar na Play Store
+docs/TABERNA.md        taberna: heróis extras durante a partida (desbloqueio na Evolução)
+docs/VISIBILIDADE.md   zona escondida atrás da torre: como é calculada e evitada
 docs/BESTIARIO.md      bestiário: descoberta, recompensas e retratos
 docs/INDICACAO.md      indicação de amigos: como funciona, regras, prêmios e testes
 docs/CONTAS.md         contas, progresso na nuvem e dados dos jogadores — servidor no Railway
